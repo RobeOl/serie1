@@ -12,7 +12,7 @@ def f_octave(x, ottave, oct):
 def f_durata(x):
     x.duration.quarterLength = random.choice([1, 1/2, 1/4])
 
-def genera_binary(tipo,note_len,i,j,ottave,starting_note):
+def genera_binary(tipo,note_len,i,j,ottave,starting_note,harmony):
 	c = note.Note(starting_note)
 
 	if starting_note <= 6:

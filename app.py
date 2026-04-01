@@ -26,12 +26,12 @@ def generate_music(start_note, sequence_type, tempo_type, harmony, ottave, bpm=1
                    interval2=6, leap2=-2):
 
     if sequence_type == "Binary":
-        s = genera_binary(tempo_type, note_length, interval, leap, ottave, start_note)
+        s = genera_binary(tempo_type, note_length, interval, leap, ottave, start_note, harmony)
     else:
         s = genera_quaternary(tempo_type, note_length,
                               interval1, leap1,
                               interval2, leap2,
-                              ottave, start_note)
+                              ottave, start_note, harmony)
 
     #s.insert(0, tempo.MetronomeMark(number=bpm))
     s.insert(0, metadata.Metadata())
@@ -64,25 +64,6 @@ def get_cached_stream(data):
         data.get("leap2", 0),
     )
 
-    # last_stream = generate_music(
-    #     start_note=data.get("start_note"),
-    #     sequence_type=data.get("sequence_type"),
-    #     tempo_type=data.get("tempo"),
-    #     harmony=data.get("harmony"),
-    #     ottave=data.get("octave", 1),
-    #     bpm=data.get("bpm", 100),
-    #     note_length=float(data.get("note_length", 1)),
-    #     interval=data.get("interval", 0),
-    #     leap=data.get("leap", 0),
-    #     interval1=data.get("interval1", 0),
-    #     leap1=data.get("leap1", 0),
-    #     interval2=data.get("interval2", 0),
-    #     leap2=data.get("leap2", 0),
-    # )
-    # se i parametri cambiano → rigenera
-    # if params != last_params:
-    #     last_stream = generate_music(*params)
-    #     last_params = params
     if (params != last_params) or (access_count > 1):
         last_stream = generate_music(*params)
         last_params = params

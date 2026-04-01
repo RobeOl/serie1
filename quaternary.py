@@ -12,7 +12,7 @@ def f_durata(x):
 	# x.duration.quarterLength = random.choice([1, 1/2, 1/4])
 	x.duration.quarterLength = random.choice([1, 1/2, 1/4])
 
-def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,starting_note=0):
+def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,starting_note,harmony):
     x = note.Note(starting_note)
 
     if starting_note <= 6:
@@ -357,13 +357,45 @@ def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,starting_note=0):
 
     
         
-    melody = stream.Stream()
-
-    # remove last element
-    notes.pop()
-    melody.append(notes)
-
-    
+    if harmony and tipo=="sequence-constrained":
+        # right hand
+        right = stream.Part()
+        right.insert(0, instrument.Piano())
+        right.insert(0, clef.TrebleClef())
+        # remove last element
+        notes.pop()
+        right.append(notes)
+        # left hand
+        left = stream.Part()
+        left.insert(0, instrument.Piano())
+        left.insert(0, clef.BassClef())
+        # chords based on four notes
+        N = len(notes)-1
+        nn = 0
+        while nn<N:
+            X1 = copy.deepcopy(notes[nn])
+            X1.octave = 3
+            X2 = copy.deepcopy(notes[nn+1])
+            X2.octave = 3
+            X3 = copy.deepcopy(notes[nn+2])
+            X3.octave = 3
+            X4 = copy.deepcopy(notes[nn+3])
+            X4.octave = 3
+            durata = X1.duration.quarterLength
+            durata = durata*4
+            Cx = chord.Chord([X1,X2,X3,X4])
+            Cx.duration.quarterLength = durata
+            left.append(Cx)
+            print(Cx)
+            nn = nn+4
+        # === Score (grand staff) ===
+        melody = stream.Score()
+        melody.insert(0, right)
+        melody.insert(0, left)
+    else:
+        melody = stream.Stream()
+        # remove last element
+        notes.pop()
+        melody.append(notes)
 
     return(melody)
-
