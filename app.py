@@ -33,7 +33,7 @@ def generate_music(start_note, sequence_type, tempo_type, harmony, ottave, bpm=1
                               interval2, leap2,
                               ottave, start_note)
 
-    s.insert(0, tempo.MetronomeMark(number=bpm))
+    #s.insert(0, tempo.MetronomeMark(number=bpm))
     s.insert(0, metadata.Metadata())
     s.metadata.title = ""
     s.metadata.composer = ""
