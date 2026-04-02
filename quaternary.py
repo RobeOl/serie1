@@ -455,11 +455,14 @@ def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,starting_note,harmony,harmo
             X4 = copy.deepcopy(notes[nn+3])
             X4.octave = 3
             durata = X1.duration.quarterLength
-            durata = durata*4
-            Cx = chord.Chord([X1,X2,X3,X4])
+            durata = durata*2
+            Cx = chord.Chord([X2,X4])
             Cx.duration.quarterLength = durata
             left.append(Cx)
-            print(Cx)
+            Cx = chord.Chord([X1,X3])
+            Cx.duration.quarterLength = durata
+            left.append(Cx)
+            #print(Cx)
             nn = nn+4
         # === Score (grand staff) ===
         melody = stream.Score()
