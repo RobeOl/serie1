@@ -19,19 +19,19 @@ last_params = None
 access_count = 0
 
 
-def generate_music(start_note, sequence_type, tempo_type, harmony, ottave, bpm=100,
+def generate_music(start_note, sequence_type, tempo_type, harmony, harmony_type, ottave, bpm=100,
                    note_length=1,
                    interval=3, leap=-1,
                    interval1=3, leap1=3,
                    interval2=6, leap2=-2):
 
     if sequence_type == "Binary":
-        s = genera_binary(tempo_type, note_length, interval, leap, ottave, start_note, harmony)
+        s = genera_binary(tempo_type, note_length, interval, leap, ottave, start_note, harmony, harmony_type)
     else:
         s = genera_quaternary(tempo_type, note_length,
                               interval1, leap1,
                               interval2, leap2,
-                              ottave, start_note, harmony)
+                              ottave, start_note, harmony, harmony_type)
 
     #s.insert(0, tempo.MetronomeMark(number=bpm))
     s.insert(0, metadata.Metadata())
@@ -53,6 +53,7 @@ def get_cached_stream(data):
         data.get("sequence_type"),
         data.get("tempo"),
         data.get("harmony"),
+        data.get("harmony_type"),  
         data.get("octave", 1),
         data.get("bpm", 100),
         float(data.get("note_length", 1)),
