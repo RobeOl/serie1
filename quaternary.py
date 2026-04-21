@@ -61,7 +61,7 @@ def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,bass_clef,starting_note,har
         notes = copy.deepcopy(LAST_NOTES)
     else:
         notes = []
-
+    
     # first interval, starting with C4
     note1 = x
 
@@ -405,7 +405,9 @@ def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,bass_clef,starting_note,har
             condition = (current_couple!=first_couple)
             #print('CURRENT: ',current_couple)
 
-
+    if not refresh_harmony_only:
+            LAST_NOTES = copy.deepcopy(notes)
+            
     if harmony and tipo=="sequence-constrained" and harmony_type=="classic":
         # right hand
         right = stream.Part()
