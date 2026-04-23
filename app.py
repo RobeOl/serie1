@@ -5,6 +5,7 @@ import tempfile
 import os
 from binary import genera_binary
 from quaternary import genera_quaternary
+from free import genera_free
 
 app = Flask(__name__)
 
@@ -27,15 +28,17 @@ def generate_music(start_note, sequence_type, tempo_type, harmony, harmony_type,
                    interval=3, leap=-1,
                    interval1=3, leap1=3,
                    interval2=6, leap2=-2,
-                   refresh_harmony_only=False):
+                   sequence = None):
 
+    
     if sequence_type == "Binary":
-        s = genera_binary(tempo_type, note_length, interval, leap, ottave, bass_clef, start_note, harmony, harmony_type)
+        s = genera_binary(start_note, interval, leap, ottave, bass_clef)
+    elif sequence_type == "Quaternary":
+        s = genera_quaternary(start_note, interval1, leap1, interval2, leap2, ottave, bass_clef)
+    elif sequence_type == "Free":
+        s = genera_free(start_note, sequence, ottave, bass_clef)
     else:
-        s = genera_quaternary(tempo_type, note_length,
-                              interval1, leap1,
-                              interval2, leap2,
-                              ottave, bass_clef, start_note, harmony, harmony_type,refresh_harmony_only)
+        raise ValueError("Unknown sequence type")
 
     s.insert(0, key.Key('C'))
     #s.insert(0, tempo.MetronomeMark(number=bpm))
@@ -69,7 +72,7 @@ def get_cached_stream(data):
         data.get("leap1", 0),
         data.get("interval2", 0),
         data.get("leap2", 0),
-        data.get("refresh_harmony_only")
+        tuple(data.get("sequence", []))   # 👈 AGGIUNTO
     )
 
     if (params != last_params) or (access_count > 1):
