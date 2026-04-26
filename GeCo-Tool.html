@@ -131,7 +131,6 @@ button:hover{
 <select id="sequenceType">
 <option value="Binary" selected>Binary</option>
 <option value="Quaternary">Quaternary</option>
-<option value="Free">Free (3,5,6,7,8)</option>
 </select>
 
 <div id="binaryParams">
@@ -144,19 +143,6 @@ Interval1 <input id="interval1" type="number" value="3">
 Leap1 <input id="leap1" type="number" value="3">
 Interval2 <input id="interval2" type="number" value="6">
 Leap2 <input id="leap2" type="number" value="-2">
-</div>
-
-<div id="freeParams" style="display:none;">
-    <label>Sequence Length</label>
-    <select id="freeLength">
-        <option value="">Select...</option>
-        <option value="3">3</option>
-        <option value="5">5</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-    </select>
-
-    <div id="freeInputs" style="margin-top:10px;"></div>
 </div>
 
 <br>
@@ -276,31 +262,8 @@ document.getElementById("sequenceType").addEventListener("change", function(){
     const type = this.value
     document.getElementById("binaryParams").style.display = type === "Binary" ? "block" : "none"
     document.getElementById("quaternaryParams").style.display = type === "Quaternary" ? "block" : "none"
-    document.getElementById("freeParams").style.display = type === "Free" ? "block" : "none"
 })
 
-document.getElementById("freeLength").addEventListener("change", function(){
-    const container = document.getElementById("freeInputs")
-    container.innerHTML = ""
-
-    const n = parseInt(this.value)
-
-    if(!n) return
-
-    for(let i = 0; i < n; i++){
-        const input = document.createElement("input")
-        input.type = "number"
-        input.min = -11
-        input.max = 11
-        input.value = 0
-        input.style.marginRight = "5px"
-        input.id = "free_" + i
-
-        container.appendChild(input)
-    }
-})
-
-// 
 function getParams(){
     const sequenceType = document.getElementById("sequenceType").value
 
@@ -309,24 +272,11 @@ function getParams(){
     if(sequenceType === "Binary"){
         params.interval = parseInt(interval.value)
         params.leap = parseInt(leap.value)
-
-    } else if(sequenceType === "Quaternary"){
+    } else {
         params.interval1 = parseInt(interval1.value)
         params.leap1 = parseInt(leap1.value)
         params.interval2 = parseInt(interval2.value)
         params.leap2 = parseInt(leap2.value)
-
-    } else if(sequenceType === "Free"){
-
-        const length = parseInt(document.getElementById("freeLength").value)
-        let sequence = []
-
-        for(let i = 0; i < length; i++){
-            const val = parseInt(document.getElementById("free_" + i).value)
-            sequence.push(val)
-        }
-
-        params.sequence = sequence
     }
 
     return {
@@ -338,10 +288,27 @@ function getParams(){
         note_length: parseFloat(noteLength.value),
         octave: document.getElementById("octave").checked ? 1 : 2,
         bass_clef: document.getElementById("bassClef").checked,
-        bpm: parseInt(bpmSlider.value),
+        bpm: parseInt(bpmSlider.value), // ✅ BPM
         ...params
     }
 }
+
+// function resetApp(){
+//     location.reload()
+// }
+
+// function resetApp(){
+//     document.getElementById("octave").checked = false
+//     document.getElementById("harmony").checked = false
+
+//     // reset UI collegata
+//     document.getElementById("octaveLabel").textContent = "(2 octaves)"
+//     document.getElementById("harmonyOptions").style.display = "none"
+//     document.getElementById("harmonyWarning").style.display = "none"
+//     document.getElementById("bassClef").checked = false
+
+//     location.reload()
+// }
 
 function resetApp(){
     // valori principali richiesti
@@ -374,6 +341,11 @@ document.getElementById("tempo").addEventListener("change", function(){
     document.getElementById("constantOptions").style.display =
         this.value === "constant" ? "block" : "none"
 })
+
+// document.getElementById("harmony").addEventListener("change", function() {
+//     document.getElementById("harmonyOptions").style.display =
+//         this.checked ? "block" : "none"
+// })
 
 function updateHarmonyUI() {
     const harmonyChecked = document.getElementById("harmony").checked
