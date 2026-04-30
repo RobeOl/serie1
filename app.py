@@ -160,39 +160,33 @@ def retrograde_stream(s):
     return new_stream
 
 
-def rhythmic_inversion_ranking_positional(s):
+def rhythmic_inversion_ranking_notes_only(s):
+    # Estrai solo le note
     notes = [el for el in s.recurse() if isinstance(el, note.Note)]
 
     durations = [n.duration.quarterLength for n in notes]
 
-    # Ranking stabile (mantiene ordine relativo)
-    sorted_indices = sorted(range(len(durations)), key=lambda i: durations[i])
+    # Ranking
+    sorted_unique = sorted(set(durations))
+    rank_map = {d: i for i, d in enumerate(sorted_unique)}
+    max_rank = len(sorted_unique) - 1
 
-    ranks = [0] * len(durations)
-    for rank, idx in enumerate(sorted_indices):
-        ranks[idx] = rank
+    inverted_map = {
+        d: sorted_unique[max_rank - rank_map[d]]
+        for d in sorted_unique
+    }
 
-    max_rank = len(durations) - 1
-    inverted_ranks = [max_rank - r for r in ranks]
-
-    # Rimappa ai valori ordinati
-    sorted_durations = sorted(durations)
-    new_durations = [sorted_durations[r] for r in inverted_ranks]
-
-    # Ricostruzione
     new_stream = stream.Stream()
-    i = 0
 
     for el in s.recurse():
-        new_el = copy.deepcopy(el)
+        new_el = el.deepcopy()  # ✅ FIX QUI
 
         if isinstance(el, note.Note):
-            new_el.duration.quarterLength = new_durations[i]
-            i += 1
+            d = el.duration.quarterLength
+            new_el.duration.quarterLength = inverted_map[d]
 
         new_stream.insert(el.offset, new_el)
 
-    new_stream.makeNotation(inPlace=True)
     return new_stream
 
 @app.route("/generate", methods=["POST"])
@@ -488,7 +482,7 @@ def invert_sequence():
 
         # 🎼 CASO SENZA ARMONIA
         else:
-            s = rhythmic_inversion_ranking_positional(last_stream)
+            s = rhythmic_inversion_ranking_notes_only(last_stream)
             s.insert(0, key.Key('C'))
             s.insert(0, metadata.Metadata())
             s.insert(0, instrument.Piano())
