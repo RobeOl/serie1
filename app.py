@@ -179,7 +179,7 @@ def rhythmic_inversion_ranking_notes_only(s):
     new_stream = stream.Stream()
 
     for el in s.recurse():
-        new_el = el.deepcopy()  # ✅ FIX QUI
+        new_el = copy.deepcopy(el)
 
         if isinstance(el, note.Note):
             d = el.duration.quarterLength
