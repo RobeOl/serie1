@@ -481,7 +481,7 @@ def invert_sequence():
             right = parts[0]  # melodia
 
             # 1. inverti melodia
-            inverted_melody = rhythmic_inversion_score(right)
+            inverted_melody = invert_part_ranking(right)
 
             # 2. rigenera armonia
             new_left = genera_armonia(
