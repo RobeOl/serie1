@@ -507,7 +507,9 @@ def invert_sequence():
             #new_score.insert(0, instrument.Piano())
             new_score.metadata.title = ""
             new_score.metadata.composer = ""
-        
+            
+            last_stream = copy.deepcopy(new_score)  # ← manca
+            s = new_score 
 
         # 🎼 CASO SENZA ARMONIA
         else:
