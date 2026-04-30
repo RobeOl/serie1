@@ -161,12 +161,10 @@ def retrograde_stream(s):
 
 
 # def rhythmic_inversion_ranking_notes_only(s):
-#     # Estrai solo le note
-#     notes = [el for el in s.recurse() if isinstance(el, note.Note)]
+#     notes = [el for el in s.flatten().notes if isinstance(el, note.Note)]
 
 #     durations = [n.duration.quarterLength for n in notes]
 
-#     # Ranking
 #     sorted_unique = sorted(set(durations))
 #     rank_map = {d: i for i, d in enumerate(sorted_unique)}
 #     max_rank = len(sorted_unique) - 1
@@ -178,23 +176,22 @@ def retrograde_stream(s):
 
 #     new_stream = stream.Stream()
 
-#     for el in s.recurse():
-#         new_el = copy.deepcopy(el)
-
-#         if isinstance(el, note.Note):
-#             d = el.duration.quarterLength
-#             new_el.duration.quarterLength = inverted_map[d]
-
-#         new_stream.insert(el.offset, new_el)
+#     for n in notes:
+#         new_n = copy.deepcopy(n)
+#         new_n.duration.quarterLength = inverted_map[n.duration.quarterLength]
+#         new_stream.append(new_n)  # 🔑 append, NON insert
 
 #     return new_stream
 
-from music21 import stream, note
 
-def rhythmic_inversion_ranking_notes_only(s):
-    notes = [el for el in s.flatten().notes if isinstance(el, note.Note)]
+def invert_part_ranking(part):
+    # lavora SOLO dentro la part
+    notes = [n for n in part.recurse().notes if isinstance(n, note.Note)]
 
     durations = [n.duration.quarterLength for n in notes]
+
+    if not durations:
+        return part
 
     sorted_unique = sorted(set(durations))
     rank_map = {d: i for i, d in enumerate(sorted_unique)}
@@ -205,14 +202,24 @@ def rhythmic_inversion_ranking_notes_only(s):
         for d in sorted_unique
     }
 
-    new_stream = stream.Stream()
+    # copia la part
+    new_part = copy.deepcopy(part)
 
-    for n in notes:
-        new_n = copy.deepcopy(n)
-        new_n.duration.quarterLength = inverted_map[n.duration.quarterLength]
-        new_stream.append(new_n)  # 🔑 append, NON insert
+    # applica trasformazione SOLO alle note
+    for n in new_part.recurse().notes:
+        d = n.duration.quarterLength
+        n.duration.quarterLength = inverted_map[d]
 
-    return new_stream
+    return new_part
+
+
+def rhythmic_inversion_score(score):
+    new_score = stream.Score()
+
+    for part in score.parts:
+        new_score.append(invert_part_ranking(part))
+
+    return new_score
 
 @app.route("/generate", methods=["POST"])
 def generate_midi():
@@ -466,54 +473,55 @@ def invert_sequence():
 
             last_stream = copy.deepcopy(s)
     elif operation == "r_I":
-        # 🎼 CASO CON ARMONIA
-        if isinstance(last_stream, stream.Score):
+        new_score = rhythmic_inversion_score(last_stream)
+        # # 🎼 CASO CON ARMONIA
+        # if isinstance(last_stream, stream.Score):
 
-            parts = list(last_stream.parts)
+        #     parts = list(last_stream.parts)
 
-            right = parts[0]  # melodia
+        #     right = parts[0]  # melodia
 
-            # 1. inverti melodia
-            inverted_melody = rhythmic_inversion_ranking_notes_only(right)
+        #     # 1. inverti melodia
+        #     inverted_melody = rhythmic_inversion_ranking_notes_only(right)
 
-            # 2. rigenera armonia
-            new_left = genera_armonia(
-                last_params.get("sequence_type"),
-                last_params.get("harmony_type"),
-                inverted_melody
-            )
+        #     # 2. rigenera armonia
+        #     new_left = genera_armonia(
+        #         last_params.get("sequence_type"),
+        #         last_params.get("harmony_type"),
+        #         inverted_melody
+        #     )
             
-            # 3. ricostruisci score
-            new_score = stream.Score()
+        #     # 3. ricostruisci score
+        #     new_score = stream.Score()
 
-            # mano destra
-            new_score.insert(0, inverted_melody)
+        #     # mano destra
+        #     new_score.insert(0, inverted_melody)
 
-            # mano sinistra
-            #new_left.insert(0, instrument.Piano())
-            new_left.insert(0, clef.BassClef())
-            new_score.insert(0, new_left)
+        #     # mano sinistra
+        #     #new_left.insert(0, instrument.Piano())
+        #     new_left.insert(0, clef.BassClef())
+        #     new_score.insert(0, new_left)
 
-            # metadata
-            #new_score.insert(0, key.Key('C'))
-            new_score.insert(0, metadata.Metadata())
-            #new_score.insert(0, instrument.Piano())
-            new_score.metadata.title = ""
-            new_score.metadata.composer = ""
+        #     # metadata
+        #     #new_score.insert(0, key.Key('C'))
+        #     new_score.insert(0, metadata.Metadata())
+        #     #new_score.insert(0, instrument.Piano())
+        #     new_score.metadata.title = ""
+        #     new_score.metadata.composer = ""
 
             last_stream = copy.deepcopy(new_score)
 
             s = new_score
 
-        # 🎼 CASO SENZA ARMONIA
-        else:
-            s = rhythmic_inversion_ranking_notes_only(last_stream)
-            s.insert(0, key.Key('C'))
-            s.insert(0, metadata.Metadata())
-            s.insert(0, instrument.Piano())
-            s.metadata.title = ""
-            s.metadata.composer = ""
-            last_stream = copy.deepcopy(s)
+        # # 🎼 CASO SENZA ARMONIA
+        # else:
+        #     s = rhythmic_inversion_ranking_notes_only(last_stream)
+        #     s.insert(0, key.Key('C'))
+        #     s.insert(0, metadata.Metadata())
+        #     s.insert(0, instrument.Piano())
+        #     s.metadata.title = ""
+        #     s.metadata.composer = ""
+        #     last_stream = copy.deepcopy(s)
     else:
         return {"error": "Invalid operation"}, 400
 
