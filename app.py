@@ -159,6 +159,41 @@ def retrograde_stream(s):
 
     return new_stream
 
+
+def rhythmic_inversion_ranking_positional(s):
+    notes = [el for el in s.recurse() if isinstance(el, note.Note)]
+
+    durations = [n.duration.quarterLength for n in notes]
+
+    # Ranking stabile (mantiene ordine relativo)
+    sorted_indices = sorted(range(len(durations)), key=lambda i: durations[i])
+
+    ranks = [0] * len(durations)
+    for rank, idx in enumerate(sorted_indices):
+        ranks[idx] = rank
+
+    max_rank = len(durations) - 1
+    inverted_ranks = [max_rank - r for r in ranks]
+
+    # Rimappa ai valori ordinati
+    sorted_durations = sorted(durations)
+    new_durations = [sorted_durations[r] for r in inverted_ranks]
+
+    # Ricostruzione
+    new_stream = stream.Stream()
+    i = 0
+
+    for el in s.recurse():
+        new_el = el.clone()
+
+        if isinstance(el, note.Note):
+            new_el.duration.quarterLength = new_durations[i]
+            i += 1
+
+        new_stream.insert(el.offset, new_el)
+
+    return new_stream
+
 @app.route("/generate", methods=["POST"])
 def generate_midi():
     global last_stream
@@ -409,6 +444,55 @@ def invert_sequence():
             s.metadata.title = ""
             s.metadata.composer = ""
 
+            last_stream = copy.deepcopy(s)
+    elif operation == "r_I":
+        # 🎼 CASO CON ARMONIA
+        if isinstance(last_stream, stream.Score):
+
+            parts = list(last_stream.parts)
+
+            right = parts[0]  # melodia
+
+            # 1. inverti melodia
+            inverted_melody = invert_stream(right)
+
+            # 2. rigenera armonia
+            new_left = genera_armonia(
+                last_params.get("sequence_type"),
+                last_params.get("harmony_type"),
+                inverted_melody
+            )
+            
+            # 3. ricostruisci score
+            new_score = stream.Score()
+
+            # mano destra
+            new_score.insert(0, inverted_melody)
+
+            # mano sinistra
+            #new_left.insert(0, instrument.Piano())
+            new_left.insert(0, clef.BassClef())
+            new_score.insert(0, new_left)
+
+            # metadata
+            #new_score.insert(0, key.Key('C'))
+            new_score.insert(0, metadata.Metadata())
+            #new_score.insert(0, instrument.Piano())
+            new_score.metadata.title = ""
+            new_score.metadata.composer = ""
+
+            last_stream = copy.deepcopy(new_score)
+
+            s = new_score
+
+        # 🎼 CASO SENZA ARMONIA
+        else:
+            s = rhythmic_inversion_ranking_positional(last_stream)
+            s.insert(0, key.Key('C'))
+            s.insert(0, metadata.Metadata())
+            s.insert(0, instrument.Piano())
+            s.metadata.title = ""
+            s.metadata.composer = ""
             last_stream = copy.deepcopy(s)
     else:
         return {"error": "Invalid operation"}, 400
