@@ -192,6 +192,7 @@ def rhythmic_inversion_ranking_positional(s):
 
         new_stream.insert(el.offset, new_el)
 
+    new_stream.makeNotation(inPlace=True)
     return new_stream
 
 @app.route("/generate", methods=["POST"])
