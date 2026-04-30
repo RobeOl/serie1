@@ -184,7 +184,7 @@ def rhythmic_inversion_ranking_positional(s):
     i = 0
 
     for el in s.recurse():
-        new_el = el.clone()
+        new_el = copy.deepcopy(el)
 
         if isinstance(el, note.Note):
             new_el.duration.quarterLength = new_durations[i]
