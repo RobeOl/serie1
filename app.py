@@ -184,34 +184,60 @@ def retrograde_stream(s):
 #     return new_stream
 
 
-def invert_part_ranking(part):
-    # lavora SOLO dentro la part
-    notes = [n for n in part.recurse().notes if isinstance(n, note.Note)]
+# def invert_part_ranking(part):
+#     # lavora SOLO dentro la part
+#     notes = [n for n in part.recurse().notes if isinstance(n, note.Note)]
 
+#     durations = [n.duration.quarterLength for n in notes]
+
+#     if not durations:
+#         return part
+
+#     sorted_unique = sorted(set(durations))
+#     rank_map = {d: i for i, d in enumerate(sorted_unique)}
+#     max_rank = len(sorted_unique) - 1
+
+#     inverted_map = {
+#         d: sorted_unique[max_rank - rank_map[d]]
+#         for d in sorted_unique
+#     }
+
+#     # copia la part
+#     new_part = copy.deepcopy(part)
+
+#     # applica trasformazione SOLO alle note
+#     for n in new_part.recurse().notes:
+#         d = n.duration.quarterLength
+#         n.duration.quarterLength = inverted_map[d]
+
+#     return new_part
+
+def invert_part_ranking(part):
+    # appiattisci per eliminare misure/voci multiple
+    flat = stream.Part()
+    for el in part.flatten().notesAndRests:
+        flat.append(copy.deepcopy(el))
+
+    notes = [n for n in flat.notes if isinstance(n, note.Note)]
     durations = [n.duration.quarterLength for n in notes]
 
     if not durations:
-        return part
+        return flat
 
     sorted_unique = sorted(set(durations))
     rank_map = {d: i for i, d in enumerate(sorted_unique)}
     max_rank = len(sorted_unique) - 1
-
     inverted_map = {
         d: sorted_unique[max_rank - rank_map[d]]
         for d in sorted_unique
     }
 
-    # copia la part
-    new_part = copy.deepcopy(part)
+    for n in flat.notes:
+        if isinstance(n, note.Note):
+            d = n.duration.quarterLength
+            n.duration.quarterLength = inverted_map[d]
 
-    # applica trasformazione SOLO alle note
-    for n in new_part.recurse().notes:
-        d = n.duration.quarterLength
-        n.duration.quarterLength = inverted_map[d]
-
-    return new_part
-
+    return flat
 
 def rhythmic_inversion_score(score):
     new_score = stream.Score()
