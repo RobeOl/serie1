@@ -160,13 +160,42 @@ def retrograde_stream(s):
     return new_stream
 
 
+# def rhythmic_inversion_ranking_notes_only(s):
+#     # Estrai solo le note
+#     notes = [el for el in s.recurse() if isinstance(el, note.Note)]
+
+#     durations = [n.duration.quarterLength for n in notes]
+
+#     # Ranking
+#     sorted_unique = sorted(set(durations))
+#     rank_map = {d: i for i, d in enumerate(sorted_unique)}
+#     max_rank = len(sorted_unique) - 1
+
+#     inverted_map = {
+#         d: sorted_unique[max_rank - rank_map[d]]
+#         for d in sorted_unique
+#     }
+
+#     new_stream = stream.Stream()
+
+#     for el in s.recurse():
+#         new_el = copy.deepcopy(el)
+
+#         if isinstance(el, note.Note):
+#             d = el.duration.quarterLength
+#             new_el.duration.quarterLength = inverted_map[d]
+
+#         new_stream.insert(el.offset, new_el)
+
+#     return new_stream
+
+from music21 import stream, note
+
 def rhythmic_inversion_ranking_notes_only(s):
-    # Estrai solo le note
-    notes = [el for el in s.recurse() if isinstance(el, note.Note)]
+    notes = [el for el in s.flatten().notes if isinstance(el, note.Note)]
 
     durations = [n.duration.quarterLength for n in notes]
 
-    # Ranking
     sorted_unique = sorted(set(durations))
     rank_map = {d: i for i, d in enumerate(sorted_unique)}
     max_rank = len(sorted_unique) - 1
@@ -178,14 +207,10 @@ def rhythmic_inversion_ranking_notes_only(s):
 
     new_stream = stream.Stream()
 
-    for el in s.recurse():
-        new_el = copy.deepcopy(el)
-
-        if isinstance(el, note.Note):
-            d = el.duration.quarterLength
-            new_el.duration.quarterLength = inverted_map[d]
-
-        new_stream.insert(el.offset, new_el)
+    for n in notes:
+        new_n = copy.deepcopy(n)
+        new_n.duration.quarterLength = inverted_map[n.duration.quarterLength]
+        new_stream.append(new_n)  # 🔑 append, NON insert
 
     return new_stream
 
