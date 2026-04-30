@@ -449,7 +449,7 @@ def invert_sequence():
             right = parts[0]  # melodia
 
             # 1. inverti melodia
-            inverted_melody = invert_stream(right)
+            inverted_melody = rhythmic_inversion_ranking_notes_only(right)
 
             # 2. rigenera armonia
             new_left = genera_armonia(
