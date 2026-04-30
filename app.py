@@ -507,13 +507,13 @@ def invert_sequence():
             #new_score.insert(0, instrument.Piano())
             new_score.metadata.title = ""
             new_score.metadata.composer = ""
-            
+
             last_stream = copy.deepcopy(new_score)  # ← manca
             s = new_score 
 
         # 🎼 CASO SENZA ARMONIA
         else:
-            s = rhythmic_inversion_score(last_stream)
+            s = invert_part_ranking(last_stream)
             s.insert(0, key.Key('C'))
             s.insert(0, metadata.Metadata())
             s.insert(0, instrument.Piano())
