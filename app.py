@@ -237,6 +237,77 @@ def shift_part(part):
 
     return new_part
 
+def minus_shift_part(part):
+    flat = stream.Part()
+    for el in part.flatten().notesAndRests:
+        flat.append(copy.deepcopy(el))
+
+    elements = list(flat.notesAndRests)
+
+    if not elements:
+        return flat
+
+    # separa ultima pausa se è finale
+    last = elements[-1]
+    final_rest = None
+
+    if isinstance(last, note.Rest):
+        final_rest = last
+        core_elements = elements[:-1]
+    else:
+        core_elements = elements
+
+    # aggiunto per eliminazione ultima nota
+    # escludi anche l'ultima nota (sempre uguale alla prima)
+    last_note = core_elements[-1]
+    core_elements = core_elements[:-1]
+    # --------------------------------------
+
+    if not core_elements:
+        return flat
+
+    # durate SOLO degli elementi musicali
+    durations = [el.duration.quarterLength for el in core_elements]
+
+    # shift circolare: la durata di ogni nota va alla successiva,
+    # e la durata dell'ultima va alla prima
+    # shift di 1
+    #shifted_durations = [durations[1]] + durations[:1]
+
+    # shift di 2
+    shifted_durations = durations[2:] + durations[:2]
+    
+    # ricostruzione con i nuovi offset
+    new_part = stream.Part()
+    offset = 0
+
+    for el, new_dur in zip(core_elements, shifted_durations):
+        new_el = copy.deepcopy(el)
+        new_el.duration.quarterLength = new_dur
+        new_part.insert(offset, new_el)
+        offset += new_dur
+
+    # ricrea pausa finale corretta
+    original_total = sum(el.duration.quarterLength for el in elements)
+    new_total = sum(shifted_durations)  # identico, ma esplicito
+
+    remaining = original_total - new_total
+
+    # aggiunto per eliminazione ultima nota
+    # reinserisci l'ultima nota invariata
+    new_part.insert(offset, copy.deepcopy(last_note))
+    offset += last_note.duration.quarterLength
+    #--------------------------------------------
+
+    if final_rest is not None and remaining > 0:
+        new_part.insert(offset, note.Rest(quarterLength=remaining))
+    elif final_rest is not None:
+        new_part.insert(offset, copy.deepcopy(final_rest))
+
+    return new_part
+
+
+
 def invert_part_ranking(part):
     flat = stream.Part()
     for el in part.flatten().notesAndRests:
@@ -351,59 +422,6 @@ def retrograde_rhythm_part(part):
 
     return new_part
 
-def permute_part(part):
-    flat = stream.Part()
-    for el in part.flatten().notesAndRests:
-        flat.append(copy.deepcopy(el))
-
-    elements = list(flat.notesAndRests)
-
-    if not elements:
-        return flat
-
-    # separa ultima pausa finale
-    last = elements[-1]
-    final_rest = None
-
-    if isinstance(last, note.Rest):
-        final_rest = last
-        core_elements = elements[:-1]
-    else:
-        core_elements = elements
-
-    if not core_elements:
-        return flat
-
-    # escludi anche l'ultima nota (sempre uguale alla prima)
-    last_note = core_elements[-1]
-    core_elements = core_elements[:-1]
-
-    if not core_elements:
-        return flat
-
-    # permutazione casuale delle durate
-    durations = [el.duration.quarterLength for el in core_elements]
-    random.shuffle(durations)
-
-    # ricostruzione
-    new_part = stream.Part()
-    offset = 0
-
-    for el, new_dur in zip(core_elements, durations):
-        new_el = copy.deepcopy(el)
-        new_el.duration.quarterLength = new_dur
-        new_part.insert(offset, new_el)
-        offset += new_dur
-
-    # reinserisci l'ultima nota invariata
-    new_part.insert(offset, copy.deepcopy(last_note))
-    offset += last_note.duration.quarterLength
-
-    # ricrea pausa finale
-    if final_rest is not None:
-        new_part.insert(offset, copy.deepcopy(final_rest))
-
-    return new_part
 
 @app.route("/generate", methods=["POST"])
 def generate_midi():
@@ -657,7 +675,7 @@ def invert_sequence():
             s.metadata.composer = ""
 
             last_stream = copy.deepcopy(s)
-    elif operation == "r_S":
+    elif operation == "r_Sp":
         # 🎼 CASO CON ARMONIA
         if isinstance(last_stream, stream.Score):
 
@@ -804,7 +822,7 @@ def invert_sequence():
             s.metadata.title = ""
             s.metadata.composer = ""
             last_stream = copy.deepcopy(s)
-    elif operation == "r_P":
+    elif operation == "r_Sm":
         # 🎼 CASO CON ARMONIA
         if isinstance(last_stream, stream.Score):
 
@@ -813,20 +831,20 @@ def invert_sequence():
             
 
             # 1. permuta ritmi melodia
-            permuted_melody = permute_part(right)
+            shifted_melody = minus_shift_part(right)
 
             # 2. rigenera armonia
             new_left = genera_armonia(
                 last_params.get("sequence_type"),
                 last_params.get("harmony_type"),
-                permuted_melody
+                shifted_melody
             )
             
             # 3. ricostruisci score
             new_score = stream.Score()
 
             # mano destra
-            new_score.insert(0, permuted_melody)
+            new_score.insert(0, shifted_melody)
 
             # mano sinistra
             #new_left.insert(0, instrument.Piano())
@@ -846,7 +864,7 @@ def invert_sequence():
         # 🎼 CASO SENZA ARMONIA
         else:
             flat = flatten_to_part(last_stream)  # ← appiattisci prima
-            s = permute_part(flat)
+            s = minus_shift_part(flat)
             s.insert(0, key.Key('C'))
             s.insert(0, metadata.Metadata())
             s.insert(0, instrument.Piano())
