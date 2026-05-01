@@ -168,31 +168,46 @@ def flatten_to_part(s):
     return flat
 
 # def invert_part_ranking(part):
-#     # appiattisci per eliminare misure/voci multiple
 #     flat = stream.Part()
 #     for el in part.flatten().notesAndRests:
 #         flat.append(copy.deepcopy(el))
 
-#     notes = [n for n in flat.notes if isinstance(n, note.Note)]
-#     durations = [n.duration.quarterLength for n in notes]
+#     elements = list(flat.notesAndRests)
 
+#     durations = [el.duration.quarterLength for el in elements]
 #     if not durations:
 #         return flat
 
 #     sorted_unique = sorted(set(durations))
 #     rank_map = {d: i for i, d in enumerate(sorted_unique)}
 #     max_rank = len(sorted_unique) - 1
+
 #     inverted_map = {
 #         d: sorted_unique[max_rank - rank_map[d]]
 #         for d in sorted_unique
 #     }
 
-#     for n in flat.notes:
-#         if isinstance(n, note.Note):
-#             d = n.duration.quarterLength
-#             n.duration.quarterLength = inverted_map[d]
+#     # 🔴 CREA NUOVA PART con offset corretti
+#     new_part = stream.Part()
+#     offset = 0
 
-#     return flat
+#     for el in elements:
+#         new_el = copy.deepcopy(el)
+#         d = new_el.duration.quarterLength
+#         new_el.duration.quarterLength = inverted_map[d]
+
+#         new_part.insert(offset, new_el)
+#         offset += new_el.duration.quarterLength
+
+#     return new_part
+
+# def rhythmic_inversion_score(score):
+#     new_score = stream.Score()
+
+#     for part in score.parts:
+#         new_score.append(invert_part_ranking(part))
+
+#     return new_score
 
 def invert_part_ranking(part):
     flat = stream.Part()
@@ -201,9 +216,24 @@ def invert_part_ranking(part):
 
     elements = list(flat.notesAndRests)
 
-    durations = [el.duration.quarterLength for el in elements]
-    if not durations:
+    if not elements:
         return flat
+
+    # 🔴 separa ultima pausa se è finale
+    last = elements[-1]
+    final_rest = None
+
+    if isinstance(last, note.Rest):
+        final_rest = last
+        core_elements = elements[:-1]
+    else:
+        core_elements = elements
+
+    if not core_elements:
+        return flat
+
+    # 🔴 durate SOLO degli elementi musicali
+    durations = [el.duration.quarterLength for el in core_elements]
 
     sorted_unique = sorted(set(durations))
     rank_map = {d: i for i, d in enumerate(sorted_unique)}
@@ -214,11 +244,11 @@ def invert_part_ranking(part):
         for d in sorted_unique
     }
 
-    # 🔴 CREA NUOVA PART con offset corretti
+    # 🔴 ricostruzione con nuovi offset
     new_part = stream.Part()
     offset = 0
 
-    for el in elements:
+    for el in core_elements:
         new_el = copy.deepcopy(el)
         d = new_el.duration.quarterLength
         new_el.duration.quarterLength = inverted_map[d]
@@ -226,15 +256,16 @@ def invert_part_ranking(part):
         new_part.insert(offset, new_el)
         offset += new_el.duration.quarterLength
 
+    # 🔴 ricrea pausa finale corretta
+    original_total = sum(el.duration.quarterLength for el in elements)
+    new_total = sum(el.duration.quarterLength for el in core_elements)
+
+    remaining = original_total - new_total
+
+    if remaining > 0:
+        new_part.insert(offset, note.Rest(quarterLength=remaining))
+
     return new_part
-
-def rhythmic_inversion_score(score):
-    new_score = stream.Score()
-
-    for part in score.parts:
-        new_score.append(invert_part_ranking(part))
-
-    return new_score
 
 @app.route("/generate", methods=["POST"])
 def generate_midi():
