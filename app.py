@@ -6,8 +6,6 @@ import os
 from sequenza import genera_sequenza
 from armonia import genera_armonia
 import copy
-# per debug
-import sys
 
 app = Flask(__name__)
 
@@ -305,23 +303,6 @@ def generate_score():
     return send_file(tmp.name, mimetype="application/xml")
 
 @app.route("/transform", methods=["POST"])
-# debug
-# nel route /transform, prima di tutto:
-print("=== TIPO last_stream ===", type(last_stream), file=sys.stderr)
-if isinstance(last_stream, stream.Score):
-    for i, p in enumerate(last_stream.parts):
-        print(f"  Part {i}:", type(p), file=sys.stderr)
-        for j, el in enumerate(p.recurse()):
-            print(f"    [{j}]", type(el), el, file=sys.stderr)
-            if j > 15:
-                print("    ...", file=sys.stderr)
-                break
-else:
-    for j, el in enumerate(last_stream.recurse()):
-        print(f"  [{j}]", type(el), el, file=sys.stderr)
-        if j > 15:
-            print("    ...", file=sys.stderr)
-            break
 
 def invert_sequence():
     global last_stream
