@@ -177,7 +177,7 @@ def shift_part(part):
     if not elements:
         return flat
 
-    # 🔴 separa ultima pausa se è finale
+    # separa ultima pausa se è finale
     last = elements[-1]
     final_rest = None
 
@@ -190,11 +190,35 @@ def shift_part(part):
     if not core_elements:
         return flat
 
-    # 🔴 durate SOLO degli elementi musicali
+    # durate SOLO degli elementi musicali
     durations = [el.duration.quarterLength for el in core_elements]
 
-    # codice da scrivere
-    return
+    # shift circolare: la durata di ogni nota va alla successiva,
+    # e la durata dell'ultima va alla prima
+    shifted_durations = [durations[-1]] + durations[:-1]
+
+    # ricostruzione con i nuovi offset
+    new_part = stream.Part()
+    offset = 0
+
+    for el, new_dur in zip(core_elements, shifted_durations):
+        new_el = copy.deepcopy(el)
+        new_el.duration.quarterLength = new_dur
+        new_part.insert(offset, new_el)
+        offset += new_dur
+
+    # ricrea pausa finale corretta
+    original_total = sum(el.duration.quarterLength for el in elements)
+    new_total = sum(shifted_durations)  # identico, ma esplicito
+
+    remaining = original_total - new_total
+
+    if final_rest is not None and remaining > 0:
+        new_part.insert(offset, note.Rest(quarterLength=remaining))
+    elif final_rest is not None:
+        new_part.insert(offset, copy.deepcopy(final_rest))
+
+    return new_part
 
 def invert_part_ranking(part):
     flat = stream.Part()
