@@ -305,6 +305,8 @@ def generate_score():
 @app.route("/transform", methods=["POST"])
 def invert_sequence():
     global last_stream
+    # DEBUG TEMPORANEO
+    print("=== TIPO last_stream ===", type(last_stream))
 
     if last_stream is None:
         return {"error": "No sequence generated yet"}, 400
