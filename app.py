@@ -212,6 +212,13 @@ def retrograde_stream(s):
 
 #     return new_part
 
+def flatten_to_part(s):
+    """Riduce qualsiasi stream/part/score a una Part pulita con solo note e pause."""
+    flat = stream.Part()
+    for el in s.flatten().notesAndRests:
+        flat.append(copy.deepcopy(el))
+    return flat
+
 def invert_part_ranking(part):
     # appiattisci per eliminare misure/voci multiple
     flat = stream.Part()
@@ -503,7 +510,7 @@ def invert_sequence():
         if isinstance(last_stream, stream.Score):
 
             parts = list(last_stream.parts)
-
+            right = flatten_to_part(parts[0])  # ← appiattisci prima
             right = parts[0]  # melodia
 
             # 1. inverti melodia
@@ -538,8 +545,9 @@ def invert_sequence():
             s = new_score 
 
         # 🎼 CASO SENZA ARMONIA
-        else:
-            s = invert_part_ranking(last_stream)
+        else
+            flatten_to_part = flatten_to_part(parts[0])  # ← appiattisci prima
+            s = invert_part_ranking(last_streamflat)
             s.insert(0, key.Key('C'))
             s.insert(0, metadata.Metadata())
             s.insert(0, instrument.Piano())
