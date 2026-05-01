@@ -777,7 +777,7 @@ def invert_sequence():
             new_score = stream.Score()
 
             # mano destra
-            new_score.insert(0, inverted_melody)
+            new_score.insert(0, r_retro_melody)
 
             # mano sinistra
             #new_left.insert(0, instrument.Piano())
