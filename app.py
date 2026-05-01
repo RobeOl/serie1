@@ -6,6 +6,8 @@ import os
 from sequenza import genera_sequenza
 from armonia import genera_armonia
 import copy
+# debug
+import sys
 
 app = Flask(__name__)
 
@@ -16,6 +18,9 @@ CORS(app, origins=[
     "https://marcobittelli.it",
     "https://www.marcobittelli.it"
 ])
+
+#debug
+sys.stdout = open(sys.stdout.fileno(), mode='w', buffering=1)
 
 # 🔹 CACHE GLOBALE
 last_stream = None
@@ -306,6 +311,24 @@ def generate_score():
 
 def invert_sequence():
     global last_stream
+
+# DEBUG TEMPORANEO
+    print("=== TIPO last_stream ===", type(last_stream))
+    if isinstance(last_stream, stream.Score):
+        for i, p in enumerate(last_stream.parts):
+            print(f"  Part {i}:", type(p))
+            for j, el in enumerate(p.recurse()):
+                print(f"    [{j}]", type(el), el)
+                if j > 15:
+                    print("    ...")
+                    break
+    else:
+        for j, el in enumerate(last_stream.recurse()):
+            print(f"  [{j}]", type(el), el)
+            if j > 15:
+                print("    ...")
+                break
+    # FINE DEBUG
 
     if last_stream is None:
         return {"error": "No sequence generated yet"}, 400
