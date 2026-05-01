@@ -6,6 +6,8 @@ import os
 from sequenza import genera_sequenza
 from armonia import genera_armonia
 import copy
+# per debug
+import sys
 
 app = Flask(__name__)
 
@@ -304,8 +306,6 @@ def generate_score():
 
 @app.route("/transform", methods=["POST"])
 # debug
-import sys
-
 # nel route /transform, prima di tutto:
 print("=== TIPO last_stream ===", type(last_stream), file=sys.stderr)
 if isinstance(last_stream, stream.Score):
