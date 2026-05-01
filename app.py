@@ -195,8 +195,12 @@ def shift_part(part):
 
     # shift circolare: la durata di ogni nota va alla successiva,
     # e la durata dell'ultima va alla prima
-    shifted_durations = [durations[-1]] + durations[:-1]
+    # shift di 1
+    #shifted_durations = [durations[-1]] + durations[:-1]
 
+    # shift di 2
+    shifted_durations = durations[-2:] + durations[:-2]
+    
     # ricostruzione con i nuovi offset
     new_part = stream.Part()
     offset = 0
