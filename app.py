@@ -157,6 +157,11 @@ def retrograde_stream(s):
     if isinstance(elements[-1], note.Rest):
         final_rest = elements[-1]
         elements = elements[:-1]
+    
+    # escludi anche l'ultima nota (sempre uguale alla prima)
+    last_note = elements[-1]
+    elements = core_elements[:-1]
+    # --------------------------------------
  
     # inverti ordine degli elementi musicali (senza la pausa finale)
     elements.reverse()
@@ -170,6 +175,11 @@ def retrograde_stream(s):
     # riaggiungi la pausa finale invariata in coda
     if final_rest is not None:
         new_stream.insert(offset, copy.deepcopy(final_rest))
+
+    # reinserisci l'ultima nota invariata
+    new_stream.insert(offset, copy.deepcopy(last_note))
+    offset += last_note.duration.quarterLength
+    #--------------------------------------------
  
     return new_stream
 
@@ -202,7 +212,6 @@ def shift_part(part):
     else:
         core_elements = elements
 
-    # aggiunto per eliminazione ultima nota
     # escludi anche l'ultima nota (sempre uguale alla prima)
     last_note = core_elements[-1]
     core_elements = core_elements[:-1]
@@ -238,7 +247,6 @@ def shift_part(part):
 
     remaining = original_total - new_total
 
-    # aggiunto per eliminazione ultima nota
     # reinserisci l'ultima nota invariata
     new_part.insert(offset, copy.deepcopy(last_note))
     offset += last_note.duration.quarterLength
