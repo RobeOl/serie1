@@ -6,6 +6,7 @@ import os
 from sequenza import genera_sequenza
 from armonia import genera_armonia
 import copy
+import random
 
 app = Flask(__name__)
 
@@ -291,6 +292,62 @@ def invert_part_ranking(part):
 
     if remaining > 0:
         new_part.insert(offset, note.Rest(quarterLength=remaining))
+
+    return new_part
+
+import random
+
+def permute_part(part):
+    flat = stream.Part()
+    for el in part.flatten().notesAndRests:
+        flat.append(copy.deepcopy(el))
+
+    elements = list(flat.notesAndRests)
+
+    if not elements:
+        return flat
+
+    # separa ultima pausa finale
+    last = elements[-1]
+    final_rest = None
+
+    if isinstance(last, note.Rest):
+        final_rest = last
+        core_elements = elements[:-1]
+    else:
+        core_elements = elements
+
+    if not core_elements:
+        return flat
+
+    # escludi anche l'ultima nota (sempre uguale alla prima)
+    last_note = core_elements[-1]
+    core_elements = core_elements[:-1]
+
+    if not core_elements:
+        return flat
+
+    # permutazione casuale delle durate
+    durations = [el.duration.quarterLength for el in core_elements]
+    random.shuffle(durations)
+
+    # ricostruzione
+    new_part = stream.Part()
+    offset = 0
+
+    for el, new_dur in zip(core_elements, durations):
+        new_el = copy.deepcopy(el)
+        new_el.duration.quarterLength = new_dur
+        new_part.insert(offset, new_el)
+        offset += new_dur
+
+    # reinserisci l'ultima nota invariata
+    new_part.insert(offset, copy.deepcopy(last_note))
+    offset += last_note.duration.quarterLength
+
+    # ricrea pausa finale
+    if final_rest is not None:
+        new_part.insert(offset, copy.deepcopy(final_rest))
 
     return new_part
 
@@ -638,6 +695,104 @@ def invert_sequence():
         else:
             flat = flatten_to_part(last_stream)  # ← appiattisci prima
             s = invert_part_ranking(flat)
+            s.insert(0, key.Key('C'))
+            s.insert(0, metadata.Metadata())
+            s.insert(0, instrument.Piano())
+            s.metadata.title = ""
+            s.metadata.composer = ""
+            last_stream = copy.deepcopy(s)
+    elif operation == "r_R":
+        # 🎼 CASO CON ARMONIA
+        if isinstance(last_stream, stream.Score):
+
+            parts = list(last_stream.parts)
+            right = flatten_to_part(parts[0])  # ← appiattisci prima
+            # right = parts[0]  # melodia
+
+            # 1. inverti melodia
+            inverted_melody = invert_part_ranking(right)
+
+            # 2. rigenera armonia
+            new_left = genera_armonia(
+                last_params.get("sequence_type"),
+                last_params.get("harmony_type"),
+                inverted_melody
+            )
+            
+            # 3. ricostruisci score
+            new_score = stream.Score()
+
+            # mano destra
+            new_score.insert(0, inverted_melody)
+
+            # mano sinistra
+            #new_left.insert(0, instrument.Piano())
+            new_left.insert(0, clef.BassClef())
+            new_score.insert(0, new_left)
+
+            # metadata
+            #new_score.insert(0, key.Key('C'))
+            new_score.insert(0, metadata.Metadata())
+            #new_score.insert(0, instrument.Piano())
+            new_score.metadata.title = ""
+            new_score.metadata.composer = ""
+
+            last_stream = copy.deepcopy(new_score)  # ← manca
+            s = new_score 
+
+        # 🎼 CASO SENZA ARMONIA
+        else:
+            flat = flatten_to_part(last_stream)  # ← appiattisci prima
+            s = invert_part_ranking(flat)
+            s.insert(0, key.Key('C'))
+            s.insert(0, metadata.Metadata())
+            s.insert(0, instrument.Piano())
+            s.metadata.title = ""
+            s.metadata.composer = ""
+            last_stream = copy.deepcopy(s)
+    elif operation == "r_P":
+        # 🎼 CASO CON ARMONIA
+        if isinstance(last_stream, stream.Score):
+
+            parts = list(last_stream.parts)
+            right = flatten_to_part(parts[0])  # ← appiattisci prima
+            
+
+            # 1. permuta ritmi melodia
+            permuted_melody = permute_part(right)
+
+            # 2. rigenera armonia
+            new_left = genera_armonia(
+                last_params.get("sequence_type"),
+                last_params.get("harmony_type"),
+                permuted_melody
+            )
+            
+            # 3. ricostruisci score
+            new_score = stream.Score()
+
+            # mano destra
+            new_score.insert(0, permuted_melody)
+
+            # mano sinistra
+            #new_left.insert(0, instrument.Piano())
+            new_left.insert(0, clef.BassClef())
+            new_score.insert(0, new_left)
+
+            # metadata
+            #new_score.insert(0, key.Key('C'))
+            new_score.insert(0, metadata.Metadata())
+            #new_score.insert(0, instrument.Piano())
+            new_score.metadata.title = ""
+            new_score.metadata.composer = ""
+
+            last_stream = copy.deepcopy(new_score)  # ← manca
+            s = new_score 
+
+        # 🎼 CASO SENZA ARMONIA
+        else:
+            flat = flatten_to_part(last_stream)  # ← appiattisci prima
+            s = permute_part(flat)
             s.insert(0, key.Key('C'))
             s.insert(0, metadata.Metadata())
             s.insert(0, instrument.Piano())
