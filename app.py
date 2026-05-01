@@ -546,7 +546,7 @@ def invert_sequence():
 
         # 🎼 CASO SENZA ARMONIA
         else:
-            flat = flatten_to_part(parts[0])  # ← appiattisci prima
+            flat = flatten_to_part(last_stream)  # ← appiattisci prima
             s = invert_part_ranking(flat)
             s.insert(0, key.Key('C'))
             s.insert(0, metadata.Metadata())
