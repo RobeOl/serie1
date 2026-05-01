@@ -167,32 +167,66 @@ def flatten_to_part(s):
         flat.append(copy.deepcopy(el))
     return flat
 
+# def invert_part_ranking(part):
+#     # appiattisci per eliminare misure/voci multiple
+#     flat = stream.Part()
+#     for el in part.flatten().notesAndRests:
+#         flat.append(copy.deepcopy(el))
+
+#     notes = [n for n in flat.notes if isinstance(n, note.Note)]
+#     durations = [n.duration.quarterLength for n in notes]
+
+#     if not durations:
+#         return flat
+
+#     sorted_unique = sorted(set(durations))
+#     rank_map = {d: i for i, d in enumerate(sorted_unique)}
+#     max_rank = len(sorted_unique) - 1
+#     inverted_map = {
+#         d: sorted_unique[max_rank - rank_map[d]]
+#         for d in sorted_unique
+#     }
+
+#     for n in flat.notes:
+#         if isinstance(n, note.Note):
+#             d = n.duration.quarterLength
+#             n.duration.quarterLength = inverted_map[d]
+
+#     return flat
+
 def invert_part_ranking(part):
-    # appiattisci per eliminare misure/voci multiple
     flat = stream.Part()
     for el in part.flatten().notesAndRests:
         flat.append(copy.deepcopy(el))
 
-    notes = [n for n in flat.notes if isinstance(n, note.Note)]
-    durations = [n.duration.quarterLength for n in notes]
+    elements = list(flat.notesAndRests)
 
+    durations = [el.duration.quarterLength for el in elements]
     if not durations:
         return flat
 
     sorted_unique = sorted(set(durations))
     rank_map = {d: i for i, d in enumerate(sorted_unique)}
     max_rank = len(sorted_unique) - 1
+
     inverted_map = {
         d: sorted_unique[max_rank - rank_map[d]]
         for d in sorted_unique
     }
 
-    for n in flat.notes:
-        if isinstance(n, note.Note):
-            d = n.duration.quarterLength
-            n.duration.quarterLength = inverted_map[d]
+    # 🔴 CREA NUOVA PART con offset corretti
+    new_part = stream.Part()
+    offset = 0
 
-    return flat
+    for el in elements:
+        new_el = copy.deepcopy(el)
+        d = new_el.duration.quarterLength
+        new_el.duration.quarterLength = inverted_map[d]
+
+        new_part.insert(offset, new_el)
+        offset += new_el.duration.quarterLength
+
+    return new_part
 
 def rhythmic_inversion_score(score):
     new_score = stream.Score()
@@ -460,7 +494,7 @@ def invert_sequence():
 
             parts = list(last_stream.parts)
             right = flatten_to_part(parts[0])  # ← appiattisci prima
-            right = parts[0]  # melodia
+            # right = parts[0]  # melodia
 
             # 1. inverti melodia
             inverted_melody = invert_part_ranking(right)
