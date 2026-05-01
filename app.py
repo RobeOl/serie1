@@ -187,6 +187,12 @@ def shift_part(part):
     else:
         core_elements = elements
 
+    # aggiunto per eliminazione ultima nota
+    # escludi anche l'ultima nota (sempre uguale alla prima)
+    last_note = core_elements[-1]
+    core_elements = core_elements[:-1]
+    # --------------------------------------
+
     if not core_elements:
         return flat
 
@@ -216,6 +222,12 @@ def shift_part(part):
     new_total = sum(shifted_durations)  # identico, ma esplicito
 
     remaining = original_total - new_total
+
+    # aggiunto per eliminazione ultima nota
+    # reinserisci l'ultima nota invariata
+    new_part.insert(offset, copy.deepcopy(last_note))
+    offset += last_note.duration.quarterLength
+    #--------------------------------------------
 
     if final_rest is not None and remaining > 0:
         new_part.insert(offset, note.Rest(quarterLength=remaining))
