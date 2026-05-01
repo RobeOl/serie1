@@ -43,7 +43,15 @@ def genera_armonia(seq_type,harmony_type,s):
             Cx.duration.quarterLength = durata
             left.append(Cx)
             nn = nn+2 
-        left.append(notes[0])
+        # bicordo finale: ultima nota, una e due ottave sotto
+        last = copy.deepcopy(notes[N])
+        low1 = copy.deepcopy(notes[N])
+        low2 = copy.deepcopy(notes[N])
+        low1.octave = last.octave - 1
+        low2.octave = last.octave - 2
+        Cf = chord.Chord([low2, low1])
+        Cf.duration.quarterLength = last.duration.quarterLength
+        left.append(Cf)
     elif seq_type=="Quaternary":
         left = stream.Part()
         # check se inizia con pausa, perchè proveniente da Retrograde
@@ -114,6 +122,13 @@ def genera_armonia(seq_type,harmony_type,s):
                 Cx.duration.quarterLength = durata
                 left.append(Cx)
                 nn = nn+4
-        # last note = first note
-        left.append(notes[0])
+        # bicordo finale: ultima nota, una e due ottave sotto
+        last = copy.deepcopy(notes[N])
+        low1 = copy.deepcopy(notes[N])
+        low2 = copy.deepcopy(notes[N])
+        low1.octave = last.octave - 1
+        low2.octave = last.octave - 2
+        Cf = chord.Chord([low2, low1])
+        Cf.duration.quarterLength = last.duration.quarterLength
+        left.append(Cf)
     return(left)
