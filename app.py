@@ -584,14 +584,14 @@ def invert_sequence():
     elif operation=="R":
         # 🎼 CASO CON ARMONIA
         if isinstance(last_stream, stream.Score):
-
+ 
             parts = list(last_stream.parts)
-
+ 
             right = parts[0]  # melodia
-
+ 
             # 1. retrogrado melodia
             retro_melody = retrograde_stream(right)
-
+ 
             # 2. rigenera armonia
             new_left = genera_armonia(
                 last_params.get("sequence_type"),
@@ -601,26 +601,26 @@ def invert_sequence():
             
             # 3. ricostruisci score
             new_score = stream.Score()
-
+ 
             # mano destra
             new_score.insert(0, retro_melody)
-
+ 
             # mano sinistra
             #new_left.insert(0, instrument.Piano())
             new_left.insert(0, clef.BassClef())
             new_score.insert(0, new_left)
-
+ 
             # metadata
             #new_score.insert(0, key.Key('C'))
             new_score.insert(0, metadata.Metadata())
             #new_score.insert(0, instrument.Piano())
             new_score.metadata.title = ""
             new_score.metadata.composer = ""
-
+ 
             last_stream = copy.deepcopy(new_score)
-
+ 
             s = new_score
-
+ 
         # 🎼 CASO SENZA ARMONIA
         else:
             s = retrograde_stream(last_stream)
@@ -630,6 +630,7 @@ def invert_sequence():
             s.metadata.title = ""
             s.metadata.composer = ""
             last_stream = copy.deepcopy(s)
+
     elif operation == "RI":
         # 🎼 CASO CON ARMONIA
         if isinstance(last_stream, stream.Score):
