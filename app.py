@@ -146,19 +146,33 @@ def invert_stream(s):
 
 def retrograde_stream(s):
     new_stream = s.__class__()
-
+ 
     elements = list(s.flat.notesAndRests)
-
-    # inverti ordine
+ 
+    if not elements:
+        return new_stream
+ 
+    # separa la pausa finale di riempimento (se presente)
+    final_rest = None
+    if isinstance(elements[-1], note.Rest):
+        final_rest = elements[-1]
+        elements = elements[:-1]
+ 
+    # inverti ordine degli elementi musicali (senza la pausa finale)
     elements.reverse()
-
+ 
     offset = 0
     for el in elements:
         new_el = copy.deepcopy(el)
         new_stream.insert(offset, new_el)
         offset += new_el.duration.quarterLength
-
+ 
+    # riaggiungi la pausa finale invariata in coda
+    if final_rest is not None:
+        new_stream.insert(offset, copy.deepcopy(final_rest))
+ 
     return new_stream
+
 
 
 def flatten_to_part(s):
