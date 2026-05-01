@@ -165,58 +165,6 @@ def retrograde_stream(s):
     return new_stream
 
 
-# def rhythmic_inversion_ranking_notes_only(s):
-#     notes = [el for el in s.flatten().notes if isinstance(el, note.Note)]
-
-#     durations = [n.duration.quarterLength for n in notes]
-
-#     sorted_unique = sorted(set(durations))
-#     rank_map = {d: i for i, d in enumerate(sorted_unique)}
-#     max_rank = len(sorted_unique) - 1
-
-#     inverted_map = {
-#         d: sorted_unique[max_rank - rank_map[d]]
-#         for d in sorted_unique
-#     }
-
-#     new_stream = stream.Stream()
-
-#     for n in notes:
-#         new_n = copy.deepcopy(n)
-#         new_n.duration.quarterLength = inverted_map[n.duration.quarterLength]
-#         new_stream.append(new_n)  # 🔑 append, NON insert
-
-#     return new_stream
-
-
-# def invert_part_ranking(part):
-#     # lavora SOLO dentro la part
-#     notes = [n for n in part.recurse().notes if isinstance(n, note.Note)]
-
-#     durations = [n.duration.quarterLength for n in notes]
-
-#     if not durations:
-#         return part
-
-#     sorted_unique = sorted(set(durations))
-#     rank_map = {d: i for i, d in enumerate(sorted_unique)}
-#     max_rank = len(sorted_unique) - 1
-
-#     inverted_map = {
-#         d: sorted_unique[max_rank - rank_map[d]]
-#         for d in sorted_unique
-#     }
-
-#     # copia la part
-#     new_part = copy.deepcopy(part)
-
-#     # applica trasformazione SOLO alle note
-#     for n in new_part.recurse().notes:
-#         d = n.duration.quarterLength
-#         n.duration.quarterLength = inverted_map[d]
-
-#     return new_part
-
 def flatten_to_part(s):
     # Riduce qualsiasi stream/part/score a una Part pulita con solo note e pause.
     flat = stream.Part()
@@ -301,6 +249,16 @@ def generate_score():
 
     if last_stream is None:
         return {"error": "No sequence generated yet"}, 400
+
+    # ------------------------------------------------------
+    # forza la creazione di misure pulite prima di esportare
+    if isinstance(last_stream, stream.Score):
+        prepared = stream.Score()
+        for part in last_stream.parts:
+            prepared.insert(0, part.flatten().makeMeasures())
+    else:
+        prepared = last_stream.flatten().makeMeasures()
+    # ------------------------------------------------------
 
     tmp = tempfile.NamedTemporaryFile(suffix=".musicxml", delete=False)
     last_stream.write('musicxml', fp=tmp.name)
@@ -581,6 +539,16 @@ def invert_sequence():
     else:
         return {"error": "Invalid operation"}, 400
 
+    #-------------------------------------------------------------
+    # alla fine di /transform, prima di write
+    if isinstance(s, stream.Score):
+        s_out = stream.Score()
+        for part in s.parts:
+            s_out.insert(0, part.flatten().makeMeasures())
+    else:
+        s_out = s.flatten().makeMeasures()
+    # -------------------------------------------------------------
+    
     # 🎵 esporta MIDI
     tmp = tempfile.NamedTemporaryFile(suffix=".mid", delete=False)
     s.write('midi', fp=tmp.name)
