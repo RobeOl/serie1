@@ -297,6 +297,60 @@ def invert_part_ranking(part):
 
 import random
 
+def retrograde_rhythm_part(part):
+    flat = stream.Part()
+    for el in part.flatten().notesAndRests:
+        flat.append(copy.deepcopy(el))
+
+    elements = list(flat.notesAndRests)
+
+    if not elements:
+        return flat
+
+    # separa ultima pausa finale
+    last = elements[-1]
+    final_rest = None
+
+    if isinstance(last, note.Rest):
+        final_rest = last
+        core_elements = elements[:-1]
+    else:
+        core_elements = elements
+
+    if not core_elements:
+        return flat
+
+    # escludi anche l'ultima nota (sempre uguale alla prima)
+    last_note = core_elements[-1]
+    core_elements = core_elements[:-1]
+
+    if not core_elements:
+        return flat
+
+    # retrogradazione: inversione dell'ordine delle durate
+    durations = [el.duration.quarterLength for el in core_elements]
+    durations.reverse()
+
+    # ricostruzione
+    new_part = stream.Part()
+    offset = 0
+
+    for el, new_dur in zip(core_elements, durations):
+        new_el = copy.deepcopy(el)
+        new_el.duration.quarterLength = new_dur
+        new_part.insert(offset, new_el)
+        offset += new_dur
+
+    # reinserisci l'ultima nota invariata
+    new_part.insert(offset, copy.deepcopy(last_note))
+    offset += last_note.duration.quarterLength
+
+    # ricrea pausa finale
+    if final_rest is not None:
+        new_part.insert(offset, copy.deepcopy(final_rest))
+
+    return new_part
+
 def permute_part(part):
     flat = stream.Part()
     for el in part.flatten().notesAndRests:
@@ -710,13 +764,13 @@ def invert_sequence():
             # right = parts[0]  # melodia
 
             # 1. inverti melodia
-            inverted_melody = invert_part_ranking(right)
+            r_retro_melody = retrograde_rhythm_part(right)
 
             # 2. rigenera armonia
             new_left = genera_armonia(
                 last_params.get("sequence_type"),
                 last_params.get("harmony_type"),
-                inverted_melody
+                r_retro_melody
             )
             
             # 3. ricostruisci score
@@ -743,7 +797,7 @@ def invert_sequence():
         # 🎼 CASO SENZA ARMONIA
         else:
             flat = flatten_to_part(last_stream)  # ← appiattisci prima
-            s = invert_part_ranking(flat)
+            s = retrograde_rhythm_part(flat)
             s.insert(0, key.Key('C'))
             s.insert(0, metadata.Metadata())
             s.insert(0, instrument.Piano())
