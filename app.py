@@ -160,7 +160,7 @@ def retrograde_stream(s):
     
     # escludi anche l'ultima nota (sempre uguale alla prima)
     last_note = elements[-1]
-    elements = core_elements[:-1]
+    elements = elements[:-1]
     # --------------------------------------
  
     # inverti ordine degli elementi musicali (senza la pausa finale)
