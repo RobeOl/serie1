@@ -167,47 +167,34 @@ def flatten_to_part(s):
         flat.append(copy.deepcopy(el))
     return flat
 
-# def invert_part_ranking(part):
-#     flat = stream.Part()
-#     for el in part.flatten().notesAndRests:
-#         flat.append(copy.deepcopy(el))
+def shift_part(part):
+    flat = stream.Part()
+    for el in part.flatten().notesAndRests:
+        flat.append(copy.deepcopy(el))
 
-#     elements = list(flat.notesAndRests)
+    elements = list(flat.notesAndRests)
 
-#     durations = [el.duration.quarterLength for el in elements]
-#     if not durations:
-#         return flat
+    if not elements:
+        return flat
 
-#     sorted_unique = sorted(set(durations))
-#     rank_map = {d: i for i, d in enumerate(sorted_unique)}
-#     max_rank = len(sorted_unique) - 1
+    # 🔴 separa ultima pausa se è finale
+    last = elements[-1]
+    final_rest = None
 
-#     inverted_map = {
-#         d: sorted_unique[max_rank - rank_map[d]]
-#         for d in sorted_unique
-#     }
+    if isinstance(last, note.Rest):
+        final_rest = last
+        core_elements = elements[:-1]
+    else:
+        core_elements = elements
 
-#     # 🔴 CREA NUOVA PART con offset corretti
-#     new_part = stream.Part()
-#     offset = 0
+    if not core_elements:
+        return flat
 
-#     for el in elements:
-#         new_el = copy.deepcopy(el)
-#         d = new_el.duration.quarterLength
-#         new_el.duration.quarterLength = inverted_map[d]
+    # 🔴 durate SOLO degli elementi musicali
+    durations = [el.duration.quarterLength for el in core_elements]
 
-#         new_part.insert(offset, new_el)
-#         offset += new_el.duration.quarterLength
-
-#     return new_part
-
-# def rhythmic_inversion_score(score):
-#     new_score = stream.Score()
-
-#     for part in score.parts:
-#         new_score.append(invert_part_ranking(part))
-
-#     return new_score
+    # codice da scrivere
+    return
 
 def invert_part_ranking(part):
     flat = stream.Part()
@@ -518,6 +505,55 @@ def invert_sequence():
             s.metadata.title = ""
             s.metadata.composer = ""
 
+            last_stream = copy.deepcopy(s)
+    elif operation == "r_S":
+        # 🎼 CASO CON ARMONIA
+        if isinstance(last_stream, stream.Score):
+
+            parts = list(last_stream.parts)
+            right = flatten_to_part(parts[0])  # ← appiattisci prima
+            # right = parts[0]  # melodia
+
+            # 1. shift ritmico melodia di uno step avanti
+            shifted_melody = shift_part(right)
+
+            # 2. rigenera armonia
+            new_left = genera_armonia(
+                last_params.get("sequence_type"),
+                last_params.get("harmony_type"),
+                shifted_melody
+            )
+            
+            # 3. ricostruisci score
+            new_score = stream.Score()
+
+            # mano destra
+            new_score.insert(0, shifted_melody)
+
+            # mano sinistra
+            #new_left.insert(0, instrument.Piano())
+            new_left.insert(0, clef.BassClef())
+            new_score.insert(0, new_left)
+
+            # metadata
+            #new_score.insert(0, key.Key('C'))
+            new_score.insert(0, metadata.Metadata())
+            #new_score.insert(0, instrument.Piano())
+            new_score.metadata.title = ""
+            new_score.metadata.composer = ""
+
+            last_stream = copy.deepcopy(new_score)  # ← manca
+            s = new_score 
+
+        # 🎼 CASO SENZA ARMONIA
+        else:
+            flat = flatten_to_part(last_stream)  # ← appiattisci prima
+            s = shift_part(flat)
+            s.insert(0, key.Key('C'))
+            s.insert(0, metadata.Metadata())
+            s.insert(0, instrument.Piano())
+            s.metadata.title = ""
+            s.metadata.composer = ""
             last_stream = copy.deepcopy(s)
     elif operation == "r_I":
         # 🎼 CASO CON ARMONIA
