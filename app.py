@@ -304,6 +304,16 @@ def minus_shift_part(part):
 
     return new_part
 
+def fill_to_measure(seq, beats_per_measure=4):
+    # Aggiunge una pausa finale per completare l'ultima battuta.
+    total = sum(el.duration.quarterLength for el in left.notesAndRests)
+    position_in_measure = total % beats_per_measure
+    if position_in_measure > 0:
+        remainder = beats_per_measure - position_in_measure
+        r = note.Rest()
+        r.duration.quarterLength = remainder
+        seq.append(r)
+
 # inversione ritmica
 def invert_part_ranking(part):
     flat = stream.Part()
@@ -364,8 +374,11 @@ def invert_part_ranking(part):
     offset += last_note.duration.quarterLength
 
     # ricrea pausa finale
-    if final_rest is not None:
-        new_part.insert(offset, copy.deepcopy(final_rest))
+    # if final_rest is not None:
+    #     new_part.insert(offset, copy.deepcopy(final_rest))
+
+    # pausa per completare l'ultima battuta
+    fill_to_measure(new_part)
 
     return new_part
 
