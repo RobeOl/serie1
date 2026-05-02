@@ -366,11 +366,10 @@ def invert_part_ranking(part):
 
     # ricrea pausa finale ricalcolata sulla durata originale
     if final_rest is not None:
-        remainder = original_total - offset
+        target_total = sum(el.duration.quarterLength for el in elements if not isinstance(el, note.Rest))
+        remainder = target_total - offset
         if remainder > 0:
             new_part.insert(offset, note.Rest(quarterLength=remainder))
-
-    return new_part
 
     return new_part
 
