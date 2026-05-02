@@ -9,8 +9,8 @@ def f_octave(x, ottave, oct):
         x.octave = oct
 
 def f_durata(x):
-	# x.duration.quarterLength = random.choice([1, 1/2, 1/4])
-	x.duration.quarterLength = random.choice([1, 1/2, 1/4])
+    # x.duration.quarterLength = random.choice([1, 1/2, 1/4])
+    x.duration.quarterLength = random.choice([1, 1/2, 1/4])
 
 def make_chord_with_min_third(A, B):
     # calcola distanza in semitoni (melodica A → B)
@@ -49,9 +49,9 @@ def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,bass_clef,starting_note,har
     x = note.Note(starting_note)
 
     if starting_note <= 6:
-	    x.octave = 4
+        x.octave = 4
     else:
-	    x.octave = 3
+        x.octave = 3
 
     oct = x.octave
 
@@ -399,8 +399,8 @@ def genera_quaternary(tipo,note_len,i,j,ii,jj,ottave,bass_clef,starting_note,har
             current_couple = [prima,seconda]
             condition = (current_couple!=first_couple)
             #print('CURRENT: ',current_couple)
-           
- 
+        
+
     melody = stream.Stream()
     # remove last element
     notes.pop()

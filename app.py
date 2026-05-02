@@ -6,7 +6,6 @@ import os
 from sequenza import genera_sequenza
 from armonia import genera_armonia
 import copy
-import random
 
 app = Flask(__name__)
 
@@ -45,6 +44,7 @@ def generate_music(start_note, sequence_type, tempo_type, harmony, harmony_type,
         right.insert(0, instrument.Piano())
         ts = meter.TimeSignature('4/4')
         right.insert(0, ts)
+        right.insert(0, clef.TrebleClef())
         # calcola lunghezza pausa rigo superiore
         total_duration = right.duration.quarterLength
         measure_duration = ts.barDuration.quarterLength
@@ -96,26 +96,25 @@ def invert_stream(s):
     last_new_pitch = None
 
     for el in s.recurse():
+        # if isinstance(el, chord.Chord):
+        #     # inversione "verticale"
+        #     pitches = [p.midi for p in el.pitches]
+        #     axis = pitches[0]
 
-        if isinstance(el, chord.Chord):
-            # inversione "verticale"
-            pitches = [p.midi for p in el.pitches]
-            axis = pitches[0]
+        #     new_pitches = []
+        #     for p in pitches:
+        #         new_p = axis - (p - axis)
+        #         while new_p < axis - 6:
+        #             new_p += 12
+        #         while new_p > axis + 6:
+        #             new_p -= 12
+        #         new_pitches.append(new_p)
 
-            new_pitches = []
-            for p in pitches:
-                new_p = axis - (p - axis)
-                while new_p < axis - 6:
-                    new_p += 12
-                while new_p > axis + 6:
-                    new_p -= 12
-                new_pitches.append(new_p)
+        #     new_chord = chord.Chord(new_pitches, quarterLength=el.quarterLength)
+        #     inverted.append(new_chord)
 
-            new_chord = chord.Chord(new_pitches, quarterLength=el.quarterLength)
-            inverted.append(new_chord)
-
-        elif isinstance(el, note.Note):
-
+        # elif isinstance(el, note.Note):
+        if isinstance(el, note.Note):
             if prev_pitch is None:
                 new_note = note.Note(el.pitch, quarterLength=el.quarterLength)
                 last_new_pitch = el.pitch.midi
@@ -161,7 +160,6 @@ def retrograde_stream(s):
     # escludi anche l'ultima nota (sempre uguale alla prima)
     last_note = elements[-1]
     elements = elements[:-1]
-    # --------------------------------------
  
     # inverti ordine degli elementi musicali (senza la pausa finale)
     elements.reverse()
@@ -175,16 +173,12 @@ def retrograde_stream(s):
      # reinserisci l'ultima nota invariata
     new_stream.insert(offset, copy.deepcopy(last_note))
     offset += last_note.duration.quarterLength
-    #--------------------------------------------
  
     # riaggiungi la pausa finale invariata in coda
     if final_rest is not None:
         new_stream.insert(offset, copy.deepcopy(final_rest))
 
-   
- 
     return new_stream
-
 
 
 def flatten_to_part(s):
@@ -246,17 +240,9 @@ def shift_part(part):
     # reinserisci l'ultima nota invariata
     new_part.insert(offset, copy.deepcopy(last_note))
     offset += last_note.duration.quarterLength
-    #--------------------------------------------
 
-    # ricrea pausa finale corretta
-    original_total = sum(el.duration.quarterLength for el in elements)
-    new_total = sum(shifted_durations)  # identico, ma esplicito
-
-    remaining = original_total - new_total
-
-    if final_rest is not None and remaining > 0:
-        new_part.insert(offset, note.Rest(quarterLength=remaining))
-    elif final_rest is not None:
+     # ricrea pausa finale corretta
+    if final_rest is not None:
         new_part.insert(offset, copy.deepcopy(final_rest))
 
     return new_part
@@ -284,7 +270,6 @@ def minus_shift_part(part):
     # escludi anche l'ultima nota (sempre uguale alla prima)
     last_note = core_elements[-1]
     core_elements = core_elements[:-1]
-    # --------------------------------------
 
     if not core_elements:
         return flat
@@ -313,23 +298,14 @@ def minus_shift_part(part):
     # reinserisci l'ultima nota invariata
     new_part.insert(offset, copy.deepcopy(last_note))
     offset += last_note.duration.quarterLength
-    #--------------------------------------------
 
-    # ricrea pausa finale corretta
-    original_total = sum(el.duration.quarterLength for el in elements)
-    new_total = sum(shifted_durations)  # identico, ma esplicito
-
-    remaining = original_total - new_total
-
-    if final_rest is not None and remaining > 0:
-        new_part.insert(offset, note.Rest(quarterLength=remaining))
-    elif final_rest is not None:
+     # ricrea pausa finale corretta
+    if final_rest is not None:
         new_part.insert(offset, copy.deepcopy(final_rest))
 
     return new_part
 
-
-
+# inversione ritmica
 def invert_part_ranking(part):
     flat = stream.Part()
     for el in part.flatten().notesAndRests:
@@ -340,7 +316,7 @@ def invert_part_ranking(part):
     if not elements:
         return flat
 
-    # 🔴 separa ultima pausa se è finale
+    # separa ultima pausa se è finale
     last = elements[-1]
     final_rest = None
 
@@ -353,8 +329,16 @@ def invert_part_ranking(part):
     if not core_elements:
         return flat
 
-    # 🔴 durate SOLO degli elementi musicali
+    # durate SOLO degli elementi musicali
     durations = [el.duration.quarterLength for el in core_elements]
+
+    # escludi anche l'ultima nota (sempre uguale alla prima)
+    last_note = core_elements[-1]
+    core_elements = core_elements[:-1]
+    durations = durations[:-1]
+
+    if not core_elements:
+        return flat
 
     sorted_unique = sorted(set(durations))
     rank_map = {d: i for i, d in enumerate(sorted_unique)}
@@ -365,7 +349,7 @@ def invert_part_ranking(part):
         for d in sorted_unique
     }
 
-    # 🔴 ricostruzione con nuovi offset
+    # ricostruzione con nuovi offset
     new_part = stream.Part()
     offset = 0
 
@@ -373,22 +357,19 @@ def invert_part_ranking(part):
         new_el = copy.deepcopy(el)
         d = new_el.duration.quarterLength
         new_el.duration.quarterLength = inverted_map[d]
-
         new_part.insert(offset, new_el)
         offset += new_el.duration.quarterLength
 
-    # 🔴 ricrea pausa finale corretta
-    original_total = sum(el.duration.quarterLength for el in elements)
-    new_total = sum(el.duration.quarterLength for el in core_elements)
+    # reinserisci l'ultima nota invariata
+    new_part.insert(offset, copy.deepcopy(last_note))
+    offset += last_note.duration.quarterLength
 
-    remaining = original_total - new_total
-
-    if remaining > 0:
-        new_part.insert(offset, note.Rest(quarterLength=remaining))
+    # ricrea pausa finale
+    if final_rest is not None:
+        new_part.insert(offset, copy.deepcopy(final_rest))
 
     return new_part
 
-import random
 
 def retrograde_rhythm_part(part):
     flat = stream.Part()
@@ -470,7 +451,7 @@ def generate_midi():
         data.get("leap2", 0)
     )
 
-    # 🔴 salva la sequenza reale (fondamentale)
+    # salva la sequenza reale (fondamentale)
     last_stream = copy.deepcopy(s)
     # salva ultimi parametri
     last_params = data
@@ -528,6 +509,8 @@ def invert_sequence():
 
             # mano destra
             new_score.insert(0, transposed_melody)
+            # added 02 may
+            new_score.insert(0, clef.TrebleClef())
 
             # mano sinistra
             #new_left.insert(0, instrument.Piano())
@@ -564,6 +547,7 @@ def invert_sequence():
 
             # 1. inverti melodia
             inverted_melody = invert_stream(right)
+            inverted_melody.clef = clef.TrebleClef()
 
             # 2. rigenera armonia
             new_left = genera_armonia(
@@ -613,6 +597,7 @@ def invert_sequence():
  
             # 1. retrogrado melodia
             retro_melody = retrograde_stream(right)
+            retro_melody.clef = clef.TrebleClef()
  
             # 2. rigenera armonia
             new_left = genera_armonia(
@@ -662,6 +647,7 @@ def invert_sequence():
 
             # 👇 QUI va la tua riga
             retro_inverted = retrograde_stream(invert_stream(right))
+            retro_inverted.clef = clef.TrebleClef()
 
             # rigenera armonia
             new_left = genera_armonia(
@@ -708,6 +694,7 @@ def invert_sequence():
 
             # 1. shift ritmico melodia di uno step avanti
             shifted_melody = shift_part(right)
+            shifted_melody.clef = clef.TrebleClef() 
 
             # 2. rigenera armonia
             new_left = genera_armonia(
@@ -757,6 +744,7 @@ def invert_sequence():
 
             # 1. inverti melodia
             inverted_melody = invert_part_ranking(right)
+            inverted_melody.clef = clef.TrebleClef()
 
             # 2. rigenera armonia
             new_left = genera_armonia(
@@ -806,6 +794,7 @@ def invert_sequence():
 
             # 1. inverti melodia
             r_retro_melody = retrograde_rhythm_part(right)
+            r_retro_melody.clef = clef.TrebleClef()
 
             # 2. rigenera armonia
             new_left = genera_armonia(
@@ -852,9 +841,9 @@ def invert_sequence():
             parts = list(last_stream.parts)
             right = flatten_to_part(parts[0])  # ← appiattisci prima
             
-
             # 1. permuta ritmi melodia
             shifted_melody = minus_shift_part(right)
+            shifted_melody.clef = clef.TrebleClef()
 
             # 2. rigenera armonia
             new_left = genera_armonia(
