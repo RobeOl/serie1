@@ -311,7 +311,6 @@ def invert_part_ranking(part):
         flat.append(copy.deepcopy(el))
 
     elements = list(flat.notesAndRests)
-    original_total = sum(el.duration.quarterLength for el in elements)
 
     if not elements:
         return flat
@@ -364,12 +363,9 @@ def invert_part_ranking(part):
     new_part.insert(offset, copy.deepcopy(last_note))
     offset += last_note.duration.quarterLength
 
-    # ricrea pausa finale ricalcolata sulla durata originale
+    # ricrea pausa finale
     if final_rest is not None:
-        target_total = sum(el.duration.quarterLength for el in elements if not isinstance(el, note.Rest))
-        remainder = target_total - offset
-        if remainder > 0:
-            new_part.insert(offset, note.Rest(quarterLength=remainder))
+        new_part.insert(offset, copy.deepcopy(final_rest))
 
     return new_part
 
