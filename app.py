@@ -211,7 +211,6 @@ def shift_part(part):
     # escludi anche l'ultima nota (sempre uguale alla prima)
     last_note = core_elements[-1]
     core_elements = core_elements[:-1]
-    # --------------------------------------
 
     if not core_elements:
         return flat
@@ -364,9 +363,12 @@ def invert_part_ranking(part):
     new_part.insert(offset, copy.deepcopy(last_note))
     offset += last_note.duration.quarterLength
 
-    # ricrea pausa finale
+    # ricrea pausa finale ricalcolata sulla durata originale
     if final_rest is not None:
-        new_part.insert(offset, copy.deepcopy(final_rest))
+        original_total = sum(el.duration.quarterLength for el in elements)
+        remainder = original_total - offset
+        if remainder > 0:
+            new_part.insert(offset, note.Rest(quarterLength=remainder))
 
     return new_part
 
