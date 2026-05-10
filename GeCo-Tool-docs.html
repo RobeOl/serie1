@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GeCo-Tool — Full Documentation</title>
+<style>
+
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f6f8;
+    color: #222;
+    line-height: 1.75;
+}
+
+/* ── Header ── */
+header {
+    background: #2980b9;
+    color: white;
+    padding: 36px 40px 28px;
+    text-align: center;
+}
+header h1 {
+    font-size: 32px;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+}
+header p.subtitle {
+    font-size: 15px;
+    opacity: 0.85;
+}
+header p.authors {
+    margin-top: 12px;
+    font-size: 13px;
+    font-style: italic;
+    opacity: 0.75;
+}
+
+/* ── Layout ── */
+.page {
+    max-width: 860px;
+    margin: 40px auto 60px;
+    padding: 0 20px;
+}
+
+/* ── Section cards ── */
+section {
+    background: white;
+    border-radius: 10px;
+    padding: 32px 36px;
+    margin-bottom: 28px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+section h2 {
+    color: #2980b9;
+    font-size: 20px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #eaf4fb;
+}
+
+section h3 {
+    color: #3498db;
+    font-size: 15px;
+    margin-top: 22px;
+    margin-bottom: 6px;
+}
+
+section p {
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+section ul {
+    padding-left: 22px;
+    margin-bottom: 14px;
+}
+
+section li {
+    font-size: 14px;
+    margin-bottom: 6px;
+}
+
+/* ── Parameter table ── */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 14px;
+}
+th {
+    background: #eaf4fb;
+    color: #2980b9;
+    text-align: left;
+    padding: 9px 12px;
+    border-bottom: 2px solid #c9e4f5;
+}
+td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #f8fcff; }
+
+/* ── Formula box ── */
+.formula {
+    background: #f0f4ff;
+    border-left: 4px solid #3498db;
+    border-radius: 4px;
+    padding: 12px 18px;
+    font-family: monospace;
+    font-size: 13px;
+    margin: 14px 0;
+    color: #1a3a6a;
+}
+
+/* ── Info callout ── */
+.callout {
+    background: #eaf4fb;
+    border-left: 4px solid #2980b9;
+    border-radius: 4px;
+    padding: 12px 18px;
+    font-size: 13px;
+    margin: 14px 0;
+    color: #1a3a6a;
+}
+
+/* ── Tag badges ── */
+.badge {
+    display: inline-block;
+    background: #3498db;
+    color: white;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+.badge.purple { background: #8e44ad; }
+.badge.red    { background: #e74c3c; }
+.badge.green  { background: #27ae60; }
+
+/* ── Footer ── */
+footer {
+    text-align: center;
+    font-size: 12px;
+    color: #aaa;
+    padding: 20px 0 40px;
+}
+
+/* ── Back button ── */
+.back-btn {
+    display: inline-block;
+    margin-bottom: 24px;
+    background: #2980b9;
+    color: white;
+    padding: 8px 18px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+}
+.back-btn:hover { background: #1a6a9a; }
+
+</style>
+</head>
+<body>
+
+<header>
+    <h1>🎵 GeCo-Tool</h1>
+    <p class="subtitle">From Interval Matrix to Score: A Generative Compositional Framework</p>
+    <p class="authors">R. Olmi &amp; M. Bittelli — Full Documentation</p>
+</header>
+
+<div class="page">
+
+    <a class="back-btn" href="GeCo-Tool6.html">← Back to the App</a>
+
+    <!-- OVERVIEW -->
+    <section>
+        <h2>Overview</h2>
+        <p>
+            GeCo-Tool is a web application for generating and exploring musical sequences derived from the
+            <strong>interval matrix</strong>: a systematic representation of all transpositions of a given
+            interval sequence, analogous to the 12-tone row matrix used in serial composition.
+            The tool is designed for composers and music theorists interested in algorithmic and
+            constraint-based melodic generation.
+        </p>
+        <p>
+            Starting from a small set of parameters — a starting note, an interval pattern, and a rhythmic
+            mode — the engine generates a complete MIDI sequence that can be played back, transformed,
+            and downloaded directly from the browser.
+        </p>
+        <div class="callout">
+            💡 No installation required. GeCo-Tool runs entirely in the browser and communicates with a
+            lightweight local backend (Python/Flask) for MIDI and score generation.
+        </div>
+    </section>
+
+    <!-- SEQUENCE TYPES -->
+    <section>
+        <h2>Sequence Types</h2>
+        <p>
+            A <em>sequence</em> in GeCo-Tool is a cyclic interval pattern applied to a starting pitch-class.
+            The cycle repeats until the original pitch-class is recovered (closure condition).
+            Four structural types are available:
+        </p>
+
+        <h3><span class="badge">Binary</span></h3>
+        <p>
+            Each cycle alternates one <strong>interval</strong> and one <strong>leap</strong>.
+            The sequence repeats until the starting pitch-class is recovered.
+        </p>
+        <div class="formula">
+            p₀ → p₀ + interval → p₀ + interval + leap → … (mod 12, until p₀ returns)
+        </div>
+        <table>
+            <tr><th>Parameter</th><th>Description</th><th>Example</th></tr>
+            <tr><td>Interval</td><td>Semitone step within the cycle</td><td>3 (minor third up)</td></tr>
+            <tr><td>Leap</td><td>Semitone jump connecting cycles</td><td>−1 (semitone down)</td></tr>
+        </table>
+
+        <h3><span class="badge">Quaternary</span></h3>
+        <p>
+            Each cycle contains two interval/leap pairs (Interval1+Leap1, Interval2+Leap2),
+            producing longer periodic structures and richer melodic contours.
+        </p>
+        <table>
+            <tr><th>Parameter</th><th>Description</th></tr>
+            <tr><td>Interval1, Leap1</td><td>First interval/leap pair</td></tr>
+            <tr><td>Interval2, Leap2</td><td>Second interval/leap pair</td></tr>
+        </table>
+
+        <h3><span class="badge">Senary</span></h3>
+        <p>
+            Three interval/leap pairs per cycle (Int1+Lea1, Int2+Lea2, Int3+Lea3),
+            yielding the richest harmonic variety and the longest before closure.
+        </p>
+
+        <h3><span class="badge">Ternary</span></h3>
+        <p>
+            Three consecutive intervals per cycle (the 3D equivalent of Binary),
+            with the cycle repeating until the starting pitch-class returns.
+            No explicit leap parameter: the three intervals determine both step and contour.
+        </p>
+
+        <div class="callout">
+            ℹ️ All intervals and leaps are expressed in <strong>semitones</strong>.
+            Positive values = upward motion; negative values = downward motion.
+        </div>
+    </section>
+
+    <!-- TEMPO / RHYTHM -->
+    <section>
+        <h2>Tempo &amp; Rhythm Mode</h2>
+        <p>
+            The <strong>Tempo</strong> selector controls how note durations are assigned to the generated
+            pitch sequence. Four modes are available:
+        </p>
+        <table>
+            <tr><th>Mode</th><th>Description</th></tr>
+            <tr>
+                <td><strong>sequence-constrained</strong></td>
+                <td>Duration changes occur at structurally significant points of the sequence
+                    (e.g. at cycle boundaries). Rhythm mirrors the periodic structure of the intervals.</td>
+            </tr>
+            <tr>
+                <td><strong>length-constrained</strong></td>
+                <td>Duration changes occur every <em>N</em> notes, where N is chosen randomly
+                    from {2, 3, 5, 6}. Rhythm is semi-independent of pitch structure.</td>
+            </tr>
+            <tr>
+                <td><strong>constant</strong></td>
+                <td>All notes share the same duration, selectable from whole note to sixteenth note.
+                    Useful for studying pure pitch relationships.</td>
+            </tr>
+            <tr>
+                <td><strong>free</strong></td>
+                <td>Each note receives an independently randomised duration
+                    (quarter, eighth, or sixteenth). Maximum rhythmic variety.</td>
+            </tr>
+        </table>
+        <p>
+            The <strong>BPM slider</strong> (top right, 60–240 bpm) controls playback speed independently
+            of the generated MIDI — the score is always rendered at the reference tempo.
+        </p>
+    </section>
+
+    <!-- PITCH TRANSFORMATIONS -->
+    <section>
+        <h2>Pitch-Class Transformations</h2>
+        <p>
+            These operations — drawn from <strong>serial music theory</strong> — transform the generated
+            melody while preserving its interval-class structure.
+            They are applied to the last generated or already-transformed sequence.
+        </p>
+        <table>
+            <tr><th>Button</th><th>Operation</th><th>Description</th></tr>
+            <tr>
+                <td><span class="badge">T</span></td>
+                <td>Transpose</td>
+                <td>Shifts all pitches by a chosen number of semitones (−11 to +11).</td>
+            </tr>
+            <tr>
+                <td><span class="badge">I</span></td>
+                <td>Invert</td>
+                <td>Melodic inversion: each interval is reflected around the first pitch
+                    (ascending becomes descending and vice versa).</td>
+            </tr>
+            <tr>
+                <td><span class="badge">R</span></td>
+                <td>Retrograde</td>
+                <td>The sequence of pitches is reversed in time.</td>
+            </tr>
+            <tr>
+                <td><span class="badge">RI</span></td>
+                <td>Retrograde-Inversion</td>
+                <td>Inversion followed by retrograde: the classic fourth form of a tone row.</td>
+            </tr>
+        </table>
+        <div class="callout">
+            💡 Transformations can be chained: apply R then T to obtain a transposed retrograde, etc.
+            Each operation updates the score and MIDI in real time.
+        </div>
+    </section>
+
+    <!-- RHYTHMIC TRANSFORMATIONS -->
+    <section>
+        <h2>Rhythmic Transformations</h2>
+        <p>
+            These operations act exclusively on the <strong>duration sequence</strong>, leaving pitches
+            unchanged. They mirror the pitch-class transformations but in the time domain.
+        </p>
+        <table>
+            <tr><th>Button</th><th>Operation</th><th>Description</th></tr>
+            <tr>
+                <td><span class="badge purple">S+</span></td>
+                <td>Shift forward</td>
+                <td>The duration pattern is cyclically advanced by two steps
+                    (the last two durations move to the front).</td>
+            </tr>
+            <tr>
+                <td><span class="badge purple">S−</span></td>
+                <td>Shift backward</td>
+                <td>The duration pattern is cyclically retarded by two steps
+                    (the first two durations move to the end).</td>
+            </tr>
+            <tr>
+                <td><span class="badge purple">I</span></td>
+                <td>Rhythmic inversion</td>
+                <td>Durations are ranked by length and replaced by their complementary rank
+                    (the longest becomes the shortest and vice versa).</td>
+            </tr>
+            <tr>
+                <td><span class="badge purple">R</span></td>
+                <td>Rhythmic retrograde</td>
+                <td>The sequence of durations is reversed, producing a time-mirror of the rhythm.</td>
+            </tr>
+        </table>
+    </section>
+
+    <!-- OTHER OPTIONS -->
+    <section>
+        <h2>Other Options</h2>
+
+        <h3>Harmony</h3>
+        <p>
+            Adds a left-hand accompaniment notated on the bass clef. Three styles are available:
+        </p>
+        <ul>
+            <li><strong>Classic</strong> — Paired notes following the harmonic rhythm of the melody.</li>
+            <li><strong>On the beat</strong> — Harmonic notes land on strong beats.</li>
+            <li><strong>Off the beat</strong> — Harmonic notes land on weak beats (syncopated feel).</li>
+        </ul>
+
+        <h3>Octaves</h3>
+        <p>
+            Constrains the melodic range to approximately <strong>1 octave</strong> (checkbox checked)
+            or <strong>2 octaves</strong> (default). Useful for keeping the melody within a singable range.
+        </p>
+
+        <h3>Bass Clef</h3>
+        <p>
+            Transposes the entire output two octaves down and notates it in bass clef.
+            Useful for exploring the same sequences in a lower register (cello, bassoon, left hand, etc.).
+        </p>
+
+        <h3>Download MIDI</h3>
+        <p>
+            Exports the current state (including any applied transformations) as a standard
+            <strong>.mid</strong> file, compatible with any DAW or notation software.
+        </p>
+    </section>
+
+    <!-- WORKFLOW -->
+    <section>
+        <h2>Typical Workflow</h2>
+        <ol style="padding-left:22px; font-size:14px;">
+            <li style="margin-bottom:8px;">Choose a <strong>Start Note</strong> and a <strong>Sequence Type</strong>.</li>
+            <li style="margin-bottom:8px;">Set the interval/leap parameters for the chosen type.</li>
+            <li style="margin-bottom:8px;">Select a <strong>Tempo</strong> mode (and note length if <em>constant</em>).</li>
+            <li style="margin-bottom:8px;">Optionally enable <strong>Harmony</strong>, <strong>Octaves</strong>, or <strong>Bass Clef</strong>.</li>
+            <li style="margin-bottom:8px;">Press <strong>Generate</strong> — the score renders and MIDI is ready to play.</li>
+            <li style="margin-bottom:8px;">Apply <strong>Pitch-Class</strong> or <strong>Rhythmic Transformations</strong> to explore variants.</li>
+            <li style="margin-bottom:8px;">Adjust <strong>BPM</strong> and press <strong>Play</strong> to audition.</li>
+            <li style="margin-bottom:8px;">Press <strong>Download MIDI</strong> to export the result.</li>
+            <li style="margin-bottom:8px;">Press <strong>Reset</strong> to start fresh.</li>
+        </ol>
+    </section>
+
+    <!-- TECHNICAL NOTES -->
+    <section>
+        <h2>Technical Notes</h2>
+        <p>
+            GeCo-Tool is a browser-based application. The frontend (HTML/CSS/JavaScript) communicates
+            with a lightweight <strong>Python/Flask</strong> backend running locally on port 5000,
+            which handles MIDI generation and MusicXML score rendering.
+        </p>
+        <ul>
+            <li>Audio playback uses <strong>Tone.js</strong> with the <em>acoustic grand piano</em>
+                soundfont via <strong>Soundfont-Player</strong>.</li>
+            <li>Score rendering uses <strong>OpenSheetMusicDisplay (OSMD)</strong>.</li>
+            <li>MIDI parsing uses <strong>@tonejs/midi</strong>.</li>
+        </ul>
+        <div class="callout">
+            ⚠️ The backend must be running locally before pressing <em>Generate</em>.
+            Start it with <code>python app.py</code> and ensure port 5000 is free.
+        </div>
+    </section>
+
+    <a class="back-btn" href="GeCo-Tool6.html">← Back to the App</a>
+
+</div>
+
+<footer>
+    R. Olmi &amp; M. Bittelli — GeCo-Tool: Generative Compositional Framework
+</footer>
+
+</body>
+</html>
