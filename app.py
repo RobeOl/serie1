@@ -4,7 +4,7 @@ from music21 import *
 import tempfile
 import os
 from sequenza import genera_sequenza
-from armonia import genera_armonia, genera_armonia_per_misura, genera_armonia_coppie
+from armonia import genera_armonia, genera_armonia_coppie
 import copy
 from centra import centra_stream
 
@@ -536,12 +536,11 @@ def import_midi():
     # Salva come last_stream (le trasformazioni lavoreranno su questo)
     last_stream = copy.deepcopy(s)
 
-    # last_params: imposta un default generico per rigenera_armonia
-    # (l'armonia non sarà disponibile su MIDI importato senza parametri)
+    # last_params: legge i parametri passati dal frontend
     last_params = {
-        "tempo": "constant",
-        "sequence_type": "Binary",
-        "harmony_type": "classic"
+        "tempo": request.form.get("tempo", "constant"),
+        "sequence_type": request.form.get("sequence_type", "Binary"),
+        "harmony_type": request.form.get("harmony_type", "classic")
     }
 
     # Restituisce il MusicXML per OSMD (stesso percorso di /score)
