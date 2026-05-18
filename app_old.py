@@ -444,29 +444,25 @@ def retrograde_rhythm_part(part):
 
 
 def truncate_stream(s, max_notes):
-    """Keep only the first max_notes melody notes in a stream or Score."""
+    """Keep only the first max_notes melody notes in a stream or Score.
+    Works on both bare Part/Stream and grand-staff Score objects."""
     if max_notes is None or max_notes <= 0:
         return s
 
     def _truncate_part(part):
-        elements = list(part.flatten().notesAndRests)
+        flat_notes = [el for el in part.flatten().notesAndRests
+                      if isinstance(el, note.Note)]
+        if len(flat_notes) <= max_notes:
+            return part
+        cutoff_time = flat_notes[max_notes].offset
         new_part = stream.Part()
-        note_count = 0
-        for el in elements:
-            if isinstance(el, note.Note):
-                if note_count >= max_notes:
-                    break          # stop: we already have enough notes
-                new_part.append(copy.deepcopy(el))
-                note_count += 1
-            else:
-                # Rest: only append if we haven't reached the limit yet
-                if note_count < max_notes:
-                    new_part.append(copy.deepcopy(el))
-        # strip any trailing rests
-        elems = list(new_part.notesAndRests)
-        while elems and isinstance(elems[-1], note.Rest):
-            new_part.remove(elems[-1])
-            elems = list(new_part.notesAndRests)
+        for el in part.flatten().notesAndRests:
+            if el.offset >= cutoff_time and isinstance(el, note.Note):
+                break
+            new_part.append(copy.deepcopy(el))
+        # strip trailing rests
+        while new_part and isinstance(list(new_part.notesAndRests)[-1], note.Rest):
+            new_part.remove(list(new_part.notesAndRests)[-1])
         fill_to_measure(new_part)
         return new_part
 
@@ -474,26 +470,18 @@ def truncate_stream(s, max_notes):
         parts = list(s.parts)
         new_melody = _truncate_part(parts[0])
         new_melody.clef = clef.TrebleClef()
-        # cutoff time = total duration of truncated melody (excluding fill rest)
-        melody_end = sum(
-            el.duration.quarterLength
-            for el in new_melody.flatten().notesAndRests
-            if isinstance(el, note.Note)
-        )
+        # find cutoff time from truncated melody
+        melody_end = sum(el.duration.quarterLength for el in new_melody.notesAndRests)
         new_score = stream.Score()
         new_score.insert(0, new_melody)
         if len(parts) > 1:
             harm_part = stream.Part()
-            elapsed = 0.0
             for el in parts[1].flatten().notesAndRests:
-                if elapsed >= melody_end:
+                if el.offset >= melody_end:
                     break
                 harm_part.append(copy.deepcopy(el))
-                elapsed += el.duration.quarterLength
-            elems = list(harm_part.notesAndRests)
-            while elems and isinstance(elems[-1], note.Rest):
-                harm_part.remove(elems[-1])
-                elems = list(harm_part.notesAndRests)
+            while harm_part and isinstance(list(harm_part.notesAndRests)[-1], note.Rest):
+                harm_part.remove(list(harm_part.notesAndRests)[-1])
             fill_to_measure(harm_part)
             harm_part.insert(0, clef.BassClef())
             new_score.insert(0, harm_part)

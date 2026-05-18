@@ -73,7 +73,7 @@ def genera_armonia_coppie(s):
     return left
 
 
-def genera_armonia(seq_type, harmony_type, s):
+def genera_armonia(seq_type, harmony_type, s, multi_k=None):
     # caso binary
     if seq_type == "Binary":
         left = stream.Part()
@@ -358,6 +358,96 @@ def genera_armonia(seq_type, harmony_type, s):
         add_final_chord(left, notes, N)
 
         # pausa per completare l'ultima battuta
+        fill_to_measure(left)
+
+    # caso multidimensional
+    elif seq_type == "Multidimensional":
+        left = stream.Part()
+        # check se inizia con pausa, perché proveniente da Retrograde
+        for el in s.notesAndRests:
+            if el.isRest:
+                left.append(el)
+            else:
+                break
+
+        notes = s.notes
+        N = len(notes) - 1
+        K = multi_k if multi_k and multi_k > 0 else 2
+        nn = 0
+
+        MAX_DUR = 4  # durata massima accordo in quarter-lengths (un intero 4/4)
+
+        def add_chord(chord_notes, durata):
+            """Inserisce l'accordo con durata min(durata, MAX_DUR);
+               se eccede aggiunge una pausa per il tempo rimanente."""
+            d = min(durata, MAX_DUR)
+            Cx = chord.Chord(chord_notes)
+            Cx.duration.quarterLength = d
+            left.append(Cx)
+            if durata > MAX_DUR:
+                r = note.Rest()
+                r.duration.quarterLength = durata - MAX_DUR
+                left.append(r)
+
+        def pick_notes(bucket, K):
+            """Se K > 4 prende una nota sì e una no (indici pari), altrimenti tutte."""
+            if K > 4:
+                return [bucket[k] for k in range(0, K, 2)]
+            return bucket
+
+        if harmony_type == "classic":
+            # un accordo per ciclo; se K > 4 prende indici pari
+            while nn + K - 1 <= N:
+                bucket = []
+                durata = 0
+                for k in range(K):
+                    xk = copy.deepcopy(notes[nn + k])
+                    xk.octave = 3
+                    bucket.append(xk)
+                    durata += xk.duration.quarterLength
+                add_chord(pick_notes(bucket, K), durata)
+                nn += K
+
+        elif harmony_type == "onbeat":
+            # due accordi per ciclo (pari poi dispari); se K > 4 dimezza le note
+            while nn + K - 1 <= N:
+                bucket = []
+                durata = 0
+                for k in range(K):
+                    xk = copy.deepcopy(notes[nn + k])
+                    xk.octave = 3
+                    bucket.append(xk)
+                    durata += xk.duration.quarterLength
+                even_notes = [bucket[k] for k in range(0, K, 2)]
+                odd_notes  = [bucket[k] for k in range(1, K, 2)] or even_notes
+                if K > 4:
+                    even_notes = [bucket[k] for k in range(0, K, 4)]       # uno ogni quattro
+                    odd_notes  = [bucket[k] for k in range(2, K, 4)] or even_notes
+                add_chord(even_notes, durata / 2)
+                add_chord(odd_notes,  durata / 2)
+                nn += K
+
+        elif harmony_type == "offbeat":
+            # due accordi per ciclo (dispari poi pari); se K > 4 dimezza le note
+            while nn + K - 1 <= N:
+                bucket = []
+                durata = 0
+                for k in range(K):
+                    xk = copy.deepcopy(notes[nn + k])
+                    xk.octave = 3
+                    bucket.append(xk)
+                    durata += xk.duration.quarterLength
+                even_notes = [bucket[k] for k in range(0, K, 2)]
+                odd_notes  = [bucket[k] for k in range(1, K, 2)] or even_notes
+                if K > 4:
+                    even_notes = [bucket[k] for k in range(0, K, 4)]
+                    odd_notes  = [bucket[k] for k in range(2, K, 4)] or even_notes
+                add_chord(odd_notes,  durata / 2)
+                add_chord(even_notes, durata / 2)
+                nn += K
+
+        # bicordo finale
+        add_final_chord(left, notes, N)
         fill_to_measure(left)
 
     return left

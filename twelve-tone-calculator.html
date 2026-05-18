@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Twelve-Tone Calculator</title>
+
+<script src="https://unpkg.com/tone"></script>
+<script src="https://unpkg.com/@tonejs/midi"></script>
+<script src="https://unpkg.com/soundfont-player/dist/soundfont-player.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay/build/opensheetmusicdisplay.min.js"></script>
+
+<style>
+    body {
+        font-family: Arial;
+        background: #3498db;
+        text-align: center;
+        padding: 10px;
+        font-weight: bold;
+    }
+
+    .container {
+        width: 1100px;
+        margin: 30px auto;
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        position: relative;
+    }
+
+    button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        border: none;
+        border-radius: 8px;
+        background: #3498db;
+        color: white;
+        cursor: pointer;
+    }
+
+    button:hover { opacity: 0.9; }
+
+    button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background-color: #ddd;
+        color: #666;
+    }
+
+    .button-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    .button-row button { flex: 1; }
+
+    .reset-btn {
+        width: 120px;
+        background-color: #e74c3c;
+        margin-top: 10px;
+    }
+    .reset-btn:hover { background-color: #c0392b; }
+
+    #score {
+        margin-top: 30px;
+        border: 1px solid #ccc;
+        padding: 10px;
+        overflow: hidden;
+    }
+
+    /* Pitch-Class Circle */
+    #pcCircleWrap {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 260px;
+        height: 260px;
+    }
+    #pcCircle { overflow: visible; }
+
+    /* Pitch-Class Transformations */
+    .transformation-box {
+        border: 2px solid #ccc;
+        background-color: #ccc;
+        border-radius: 8px;
+        padding: 10px 12px 12px;
+        display: inline-block;
+        margin-top: 6px;
+    }
+    .transformation-box .label {
+        font-weight: bold;
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+    .operator-row {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+    .operator-row button {
+        width: 60px;
+        padding: 6px 8px;
+        background-color: #4444ff;
+        border: 1px solid #5555ff;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .operator-row button:hover { background-color: #eed890; }
+
+    /* Rhythmic Transformations */
+    .rythm_transformation-box {
+        border: 2px solid #caa;
+        background-color: #fcc;
+        border-radius: 8px;
+        padding: 10px 12px 12px;
+        display: inline-block;
+        margin-top: 6px;
+        margin-left: 10px;
+    }
+    .rythm_transformation-box .label {
+        font-weight: bold;
+        margin-bottom: 6px;
+        font-size: 14px;
+    }
+    .operator2-row {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+    .operator2-row button {
+        width: 60px;
+        padding: 6px 8px;
+        background-color: #aa00ff;
+        border: 1px solid #9900ff;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .operator2-row button:hover { background-color: #eed890; }
+
+    /* Contextual help panel */
+    #helpPanel {
+        margin-top: 16px;
+        background: #eaf4fb;
+        border-left: 4px solid #3498db;
+        border-radius: 6px;
+        padding: 10px 14px;
+        font-size: 13px;
+        color: #2c3e50;
+        min-height: 38px;
+        text-align: left;
+        transition: background 0.2s;
+    }
+    #helpPanel em { color: #7f8c8d; font-style: italic; }
+
+    input[type="number"] {
+        width: 52px;
+        -webkit-appearance: auto;
+        appearance: auto;
+        -moz-appearance: number-input;
+    }
+</style>
+
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loadingOverlay" style="
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.5); color:white; display:none;
+    align-items:center; justify-content:center;
+    font-size:22px; z-index:20000;">
+    ⏳ Generating... please wait
+</div>
+
+<!-- BPM control -->
+<div id="bpmControl" style="
+    position:fixed; top:20px; right:60px;
+    background:white; padding:10px 15px;
+    border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.2); z-index:10000;">
+    <label><b>BPM:</b> <span id="bpmValue">100</span></label><br>
+    <input type="range" id="bpmSlider" min="60" max="240" value="100"
+        data-help="Playback tempo in beats per minute (60–240). Does not affect the generated MIDI file, only the in-browser playback speed.">
+</div>
+
+<div class="container">
+
+    <!-- Pitch-Class Circle -->
+    <div id="pcCircleWrap">
+        <svg id="pcCircle" width="260" height="260" viewBox="-110 -110 220 220"></svg>
+    </div>
+
+    <h1 style="margin:0 0 16px 0; color:#2c3e50; font-size:26px;">
+        🎼 Twelve-Tone Calculator
+    </h1>
+    <p style="margin:0 0 18px 0; font-size:13px; color:#555; font-weight:normal;">
+        Multidimensional sequence — 12 intervals
+    </p>
+
+    <!-- Start Note -->
+    <label>Start Note</label>
+    <select id="startNote" data-help="The pitch-class on which the sequence begins. The actual octave is assigned automatically (C–F# start in octave 4, G–B in octave 3).">
+        <option value="0">C</option>
+        <option value="1">C#</option>
+        <option value="2">D</option>
+        <option value="3">Eb</option>
+        <option value="4">E</option>
+        <option value="5">F</option>
+        <option value="6">F#</option>
+        <option value="7">G</option>
+        <option value="8">Ab</option>
+        <option value="9">A</option>
+        <option value="10">Bb</option>
+        <option value="11">B</option>
+    </select>
+
+    <br><br>
+
+    <!-- Multidimensional inputs — always visible, K fixed at 12 -->
+    <div style="margin-top:6px;">
+        <div id="multiRow1" style="display:flex; gap:8px; align-items:center; flex-wrap:nowrap; margin-bottom:6px; justify-content:center;"></div>
+        <div id="multiRow2" style="display:flex; gap:8px; align-items:center; flex-wrap:nowrap; justify-content:center;"></div>
+    </div>
+
+    <br>
+
+    <!-- Tempo -->
+    <label>Tempo</label>
+    <select id="tempo" data-help="Rhythm mode. sequence-constrained: durations change at cycle boundaries. length-constrained: change every N notes (N random from {2,3,5,6}). constant: all notes equal (choose below). free: each note gets an independent random duration.">
+        <option value="sequence-constrained" selected>sequence-constrained</option>
+        <option value="length-constrained">length-constrained</option>
+        <option value="constant">constant</option>
+        <option value="free">free</option>
+    </select>
+
+    <div id="constantOptions" style="display:none;">
+        <label>Note Length</label>
+        <select id="noteLength" data-help="Duration assigned to every note when Tempo = constant. From whole note (4 beats) down to sixteenth (¼ beat).">
+            <option value="4">Whole (4 beats)</option>
+            <option value="2">Half (2 beats)</option>
+            <option value="1">Quarter (1 beat)</option>
+            <option value="0.5">Eighth (1/2 beat)</option>
+            <option value="0.25">Sixteenth (1/4 beat)</option>
+        </select>
+    </div>
+
+    <br><br>
+
+    <!-- Harmony + Limit to 12 notes -->
+    <label>
+        <input type="checkbox" id="harmony" data-help="Adds a bass-clef accompaniment (left hand). Three harmonisation styles are available: Classic, On the beat, Off the beat.">
+        Harmony
+    </label>
+
+    <label style="margin-left:20px;">
+        <input type="checkbox" id="limit12" data-help="Limit to 12 notes: truncates the generated sequence to exactly 12 notes. The score and playback will show only the first 12 notes of the full sequence.">
+        Limit to 12 notes
+    </label>
+
+    <!-- Metronome -->
+    <label style="margin-left:20px; margin-top:8px; display:inline-block;">
+        <input type="checkbox" id="metronome" data-help="When enabled, a metronome click will sound during playback at the current BPM.">
+        Metronome
+    </label>
+    <select id="metronomeSound" style="margin-left:8px; font-size:13px; padding:2px 6px; border-radius:5px; border:1px solid #aaa;"
+        data-help="Metronome click sound. DAW: short white noise burst. Beep: sine tone. Wood: wooden stick click.">
+        <option value="noise">DAW (noise)</option>
+        <option value="beep">Beep (sine)</option>
+        <option value="wood">Wood block</option>
+    </select>
+
+    <div id="harmonyOptions" style="display:none; margin-top:10px;">
+        <div id="harmonyTypeRow">
+            <label>Harmony Type</label>
+            <select id="harmonyType" data-help="Style of the bass-clef accompaniment. Classic: each melody note paired with its lower octave. On the beat: chords on strong beats. Off the beat: chords on weak beats.">
+                <option value="classic">Classic</option>
+                <option value="onbeat">On the beat</option>
+                <option value="offbeat">Off the beat</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Generate -->
+    <button onclick="generateMusic()" data-help="Sends the current parameters to the server and generates a new sequence. The result is displayed as notation and loaded for playback and download.">Generate</button>
+
+    <!-- Pitch-Class Transformations -->
+    <div class="transformation-box">
+        <div class="label">Pitch-Class Transformations</div>
+        <div class="operator-row">
+            <button onclick="transform('T')" title="Transpose" data-help="T — Transpose: shifts all pitches by the number of semitones you select in the dropdown (−11 to +11).">T</button>
+            <button onclick="transform('I')" title="Invert" data-help="I — Inversion: reflects each melodic interval around the first pitch. Rising intervals become falling, and vice versa.">I</button>
+            <button onclick="transform('R')" title="Retrograde" data-help="R — Retrograde: reverses the order of all pitches, so the sequence is played backwards.">R</button>
+            <button onclick="transform('RI')" title="Retrograde-Invert" data-help="RI — Retrograde-Inversion: applies inversion first, then retrograde. One of the four classical serial transformations.">RI</button>
+        </div>
+        <div id="transposeControl" style="margin-top:10px; display:none;">
+            <label>Semitones:</label>
+            <select id="transposeValue" data-help="Number of semitones for transposition. Positive values transpose up, negative values down."></select>
+        </div>
+    </div>
+
+    <!-- Rhythmic Transformations -->
+    <div class="rythm_transformation-box">
+        <div class="label">Rhythmic Transformations</div>
+        <div class="operator2-row">
+            <button onclick="rythm_transform('r_Sp')" title="Shift +" data-help="S+ — Rhythmic shift forward: the duration pattern is cyclically advanced by two positions.">S+</button>
+            <button onclick="rythm_transform('r_Sm')" title="Shift -" data-help="S− — Rhythmic shift backward: the duration pattern is cyclically retarded by two positions.">S-</button>
+            <button onclick="rythm_transform('r_I')" title="Invert" data-help="I — Rhythmic inversion: durations are rank-ordered and each is replaced by its complementary rank.">I</button>
+            <button onclick="rythm_transform('r_R')" title="Retrograde" data-help="R — Rhythmic retrograde: reverses the sequence of note durations.">R</button>
+        </div>
+    </div>
+
+    <!-- Play / Stop / Download / Import -->
+    <div class="button-row">
+        <button onclick="playMusic()" data-help="Plays back the generated sequence using a piano soundfont at the BPM set by the slider (top right).">Play</button>
+        <button onclick="stopMusic()" data-help="Stops playback immediately.">Stop</button>
+        <button onclick="downloadMidi()" data-help="Downloads the current sequence as a MIDI file and a text file with all generation parameters.">Download MIDI</button>
+        <button onclick="document.getElementById('midiFileInput').click()"
+            data-help="Import a MIDI file generated by this tool. The sequence will be loaded and all transformations will be available."
+            title="Sequence type, tempo, and harmony MUST match the imported file!">
+            Import MIDI
+        </button>
+    </div>
+
+    <input type="file" id="midiFileInput" accept=".mid,.midi,.txt" multiple style="display:none"
+           onchange="importMidi(this)">
+
+    <button class="reset-btn" onclick="resetApp()" data-help="Resets all parameters to their default values and clears the score.">Reset</button>
+
+    <br>
+    <label style="font-style:italic; display:block; text-align:right; margin-top:6px;">
+        R. Olmi &amp; M. Bittelli
+    </label>
+    <label style="font-style:italic; display:block; text-align:right; font-size:10px; color:#3498db;">
+        Twelve-Tone Calculator
+    </label>
+
+    <!-- Contextual help panel -->
+    <div id="helpPanel"><em>Hover over or focus any control to see its description.</em></div>
+
+    <div id="score"></div>
+
+</div><!-- end .container -->
+
+
+<script>
+
+// Cambia solo questa riga per passare da locale a produzione
+const ENV = "local"   // cambia in "remote" per produzione
+// const ENV = "remote"
+const BASE_URL = ENV === "local" ? "http://localhost:5000" : "https://serie1.onrender.com"
+let serverAwake = ENV === "local"  // true in locale, false in remoto
+
+let midiData
+let part
+let synth
+let osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(document.getElementById("score"))
+let midiBlobGlobal
+let inversionActive = false
+
+const loadingOverlay = document.getElementById("loadingOverlay")
+
+osmd.setOptions({
+    drawPartNames: false,
+    drawPartAbbreviations: false
+})
+
+// ── Transpose select ───────────────────────────────────────────────────────
+const transposeSelect = document.getElementById("transposeValue")
+for(let i = -11; i <= 11; i++){
+    const opt = document.createElement("option")
+    opt.value = i
+    opt.textContent = i
+    transposeSelect.appendChild(opt)
+}
+transposeSelect.value = "0"
+
+transposeSelect.addEventListener("change", () => {
+    const maxNT = document.getElementById("limit12").checked ? 12 : 0
+    sendTransform({ operation: "T", value: parseInt(transposeSelect.value), max_notes: maxNT })
+    document.getElementById("transposeControl").style.display = "none"
+})
+
+// ── BPM ───────────────────────────────────────────────────────────────────
+const bpmSlider = document.getElementById("bpmSlider")
+const bpmValue  = document.getElementById("bpmValue")
+bpmSlider.addEventListener("input", function(){ bpmValue.textContent = this.value })
+
+// ── Build 12 interval inputs (K fixed at 12) ───────────────────────────────
+const DEFAULTS_12 = [1,1,1,1,1,1,1,1,1,1,1,1]
+
+function buildMultiInputs(){
+    const row1 = document.getElementById("multiRow1")
+    const row2 = document.getElementById("multiRow2")
+    row1.innerHTML = ""
+    row2.innerHTML = ""
+    for(let i = 1; i <= 12; i++){
+        const label = document.createElement("label")
+        label.style.cssText = "display:flex; flex-direction:column; align-items:center; font-size:13px; gap:2px;"
+        label.innerHTML = `<span>i${i}</span>`
+        const inp = document.createElement("input")
+        inp.type = "number"
+        inp.id = `multi_i${i}`
+        inp.value = DEFAULTS_12[i-1]
+        inp.style.width = "52px"
+        inp.setAttribute("data-help", `Multidimensional — Interval i${i} of 12 (integer, semitones).`)
+        label.appendChild(inp)
+        if(i <= 6) row1.appendChild(label)
+        else       row2.appendChild(label)
+    }
+}
+
+buildMultiInputs()
+
+// ── Tempo ──────────────────────────────────────────────────────────────────
+document.getElementById("tempo").addEventListener("change", function(){
+    document.getElementById("constantOptions").style.display =
+        this.value === "constant" ? "block" : "none"
+    updateHarmonyUI()
+})
+
+// ── Harmony ───────────────────────────────────────────────────────────────
+function updateHarmonyUI(){
+    const checked = document.getElementById("harmony").checked
+    document.getElementById("harmonyOptions").style.display = checked ? "block" : "none"
+}
+document.getElementById("harmony").addEventListener("change", updateHarmonyUI)
+
+// ── Params ────────────────────────────────────────────────────────────────
+function getParams(){
+    const vals = []
+    for(let i = 1; i <= 12; i++){
+        const el = document.getElementById(`multi_i${i}`)
+        vals.push(el ? parseInt(el.value) || 0 : 0)
+    }
+
+    const harmonyOn = document.getElementById("harmony").checked
+
+    return {
+        start_note:    parseInt(document.getElementById("startNote").value),
+        sequence_type: "Multidimensional",
+        tempo:         document.getElementById("tempo").value,
+        harmony:       harmonyOn,
+        harmony_type:  harmonyOn ? document.getElementById("harmonyType").value : null,
+        note_length:   parseFloat(document.getElementById("noteLength").value),
+        octave:        2,         // fixed — no octave limitation option
+        bass_clef:     false,     // removed
+        bpm:           parseInt(bpmSlider.value),
+        multi_k:       12,
+        multi_values:  vals,
+        max_notes:     document.getElementById("limit12").checked ? 12 : 0
+    }
+}
+
+// ── Loading helpers ────────────────────────────────────────────────────────
+function showLoading(){ loadingOverlay.style.display = "flex" }
+function hideLoading(){ loadingOverlay.style.display = "none" }
+
+// ── Limit to 12 notes: handled server-side via max_notes param ───────────
+
+// ── Reset ──────────────────────────────────────────────────────────────────
+function resetApp(){
+    if(typeof pcReset === 'function') pcReset()
+    document.getElementById("score").innerHTML = ""
+    midiData = null
+    midiBlobGlobal = null
+    document.getElementById("tempo").value = "sequence-constrained"
+    document.getElementById("startNote").value = "0"
+    document.getElementById("tempo").dispatchEvent(new Event("change"))
+    document.getElementById("harmony").checked = false
+    document.getElementById("limit12").checked = false
+    document.getElementById("metronome").checked = false
+    document.getElementById("harmonyOptions").style.display = "none"
+    document.getElementById("bpmSlider").value = 100
+    document.getElementById("bpmValue").textContent = "100"
+    buildMultiInputs()
+    location.reload()
+}
+
+// ── Server check ───────────────────────────────────────────────────────────
+async function checkServer(){
+    if(ENV === "local") return
+    try {
+        const res = await fetch(`${BASE_URL}/health`)
+        if(res.ok){ serverAwake = true }
+        else       { setTimeout(checkServer, 3000) }
+    } catch(e){ setTimeout(checkServer, 3000) }
+}
+checkServer()
+
+// ── Generate ───────────────────────────────────────────────────────────────
+async function generateMusic(){
+    if(!serverAwake){ alert("⏳ The server is still starting up"); return }
+    showLoading()
+    loadingOverlay.innerText = "⏳ Generating MIDI..."
+    try {
+        const params = getParams()
+
+        const midiRes = await fetch(`${BASE_URL}/generate`, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(params)
+        })
+        const midiBlob = await midiRes.blob()
+        midiBlobGlobal = midiBlob
+        const midiBuffer = await midiBlob.arrayBuffer()
+        midiData = new Midi(midiBuffer)
+
+        const scoreRes = await fetch(`${BASE_URL}/score`, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(params)
+        })
+        const scoreBlob = await scoreRes.blob()
+        const scoreUrl = URL.createObjectURL(scoreBlob)
+
+        loadingOverlay.innerText = "🖊 Rendering notation..."
+        await osmd.load(scoreUrl)
+        osmd.render()
+
+        const svg = document.querySelector("#score svg")
+        if(svg){
+            const bbox = svg.getBBox()
+            svg.style.marginTop = `-${Math.max(0, bbox.y - 20)}px`
+        }
+    } catch(err){
+        console.error(err)
+        alert("Error during generation")
+    } finally {
+        hideLoading()
+    }
+}
+
+// ── Transform (pitch) ──────────────────────────────────────────────────────
+async function transform(type){
+    if(!midiData){ alert("Generate music first!"); return }
+    const maxN = document.getElementById("limit12").checked ? 12 : 0
+    if(type === "T"){
+        document.getElementById("transposeControl").style.display = "block"
+        return
+    }
+    sendTransform({ operation: type, max_notes: maxN })
+}
+
+// ── Transform (rhythm) ────────────────────────────────────────────────────
+async function rythm_transform(type){
+    if(!midiData){ alert("Generate music first!"); return }
+    const maxNR = document.getElementById("limit12").checked ? 12 : 0
+    sendTransform({ operation: type, max_notes: maxNR })
+}
+
+// ── Send transform ─────────────────────────────────────────────────────────
+async function sendTransform(payload){
+    showLoading()
+    loadingOverlay.innerText = "🔄 Applying transformation..."
+    try {
+        const midiRes = await fetch(`${BASE_URL}/transform`, {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
+        })
+        const midiBlob = await midiRes.blob()
+        midiBlobGlobal = midiBlob
+        const midiBuffer = await midiBlob.arrayBuffer()
+        midiData = new Midi(midiBuffer)
+
+        const scoreRes = await fetch(`${BASE_URL}/score`, { method: "POST" })
+        const scoreBlob = await scoreRes.blob()
+        const scoreUrl = URL.createObjectURL(scoreBlob)
+
+        loadingOverlay.innerText = "🖊 Rendering notation..."
+        await osmd.load(scoreUrl)
+        osmd.render()
+
+        const svg = document.querySelector("#score svg")
+        if(svg){
+            const bbox = svg.getBBox()
+            svg.style.marginTop = `-${Math.max(0, bbox.y - 20)}px`
+        }
+    } finally {
+        hideLoading()
+    }
+}
+
+// ── Metronome ──────────────────────────────────────────────────────────────
+let metronomePart = null
+
+function scheduleClick(ctx, when, strong, mode){
+    const gainNode = ctx.createGain()
+    gainNode.connect(ctx.destination)
+
+    if(mode === 'noise'){
+        const bufSize = ctx.sampleRate * 0.025
+        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate)
+        const data = buf.getChannelData(0)
+        for(let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1)
+        const src = ctx.createBufferSource()
+        src.buffer = buf
+        const hp = ctx.createBiquadFilter()
+        hp.type = 'highpass'
+        hp.frequency.value = strong ? 1200 : 2000
+        src.connect(hp); hp.connect(gainNode)
+        gainNode.gain.setValueAtTime(strong ? 0.9 : 0.45, when)
+        gainNode.gain.exponentialRampToValueAtTime(0.001, when + 0.025)
+        src.start(when); src.stop(when + 0.03)
+
+    } else if(mode === 'beep'){
+        const osc = ctx.createOscillator()
+        osc.type = 'sine'
+        osc.frequency.value = strong ? 1760 : 1047
+        osc.connect(gainNode)
+        gainNode.gain.setValueAtTime(strong ? 0.7 : 0.35, when)
+        gainNode.gain.exponentialRampToValueAtTime(0.001, when + 0.05)
+        osc.start(when); osc.stop(when + 0.055)
+
+    } else if(mode === 'wood'){
+        const bufSize = ctx.sampleRate * 0.015
+        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate)
+        const data = buf.getChannelData(0)
+        const freq = strong ? 900 : 1400
+        for(let i = 0; i < bufSize; i++){
+            const t = i / ctx.sampleRate
+            data[i] = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * 300)
+        }
+        const src = ctx.createBufferSource()
+        src.buffer = buf; src.connect(gainNode)
+        gainNode.gain.setValueAtTime(strong ? 1.0 : 0.55, when)
+        src.start(when); src.stop(when + 0.02)
+    }
+}
+
+function startMetronome(currentBPM, numBeats){
+    stopMetronome()
+    const beatDuration = 60 / currentBPM
+    const mode = document.getElementById('metronomeSound').value
+    const metEvents = []
+    for(let i = 0; i < numBeats; i++) metEvents.push({ time: i * beatDuration, beat: i })
+    metronomePart = new Tone.Part((time, val) => {
+        const ctx = Tone.getContext().rawContext
+        scheduleClick(ctx, time, (val.beat % 4 === 0), mode)
+    }, metEvents)
+    metronomePart.start(0)
+}
+
+function stopMetronome(){
+    if(metronomePart){ metronomePart.stop(); metronomePart.dispose(); metronomePart = null }
+}
+
+// ── Play ───────────────────────────────────────────────────────────────────
+async function playMusic(){
+    if(!midiData) return
+    await Tone.start()
+    Tone.Transport.stop()
+    Tone.Transport.cancel()
+
+    const baseBPM = 120
+    const currentBPM = parseInt(bpmSlider.value)
+    const scale = baseBPM / currentBPM
+    Tone.Transport.bpm.value = currentBPM
+
+    const context = Tone.getContext().rawContext
+    synth = await Soundfont.instrument(context, "acoustic_grand_piano")
+
+    let events = []
+    midiData.tracks.forEach((track, trackIndex) => {
+        track.notes.forEach(note => {
+            events.push({
+                time:      note.time * scale,
+                note:      note.name,
+                duration:  note.duration * scale,
+                velocity:  note.velocity,
+                isHarmony: trackIndex > 0
+            })
+        })
+    })
+
+    part = new Tone.Part((time, value) => {
+        synth.play(value.note, time, { duration: value.duration, gain: value.velocity })
+    }, events)
+
+    if(document.getElementById("metronome").checked){
+        const beatsRaw = midiData.duration / 0.5
+        const numBeats = Math.ceil(beatsRaw / 4) * 4
+        startMetronome(currentBPM, numBeats)
+    }
+
+    part.start(0)
+    Tone.Transport.start()
+    pcPlay()
+}
+
+// ── Stop ───────────────────────────────────────────────────────────────────
+function stopMusic(){
+    Tone.Transport.stop()
+    if(part) part.stop()
+    stopMetronome()
+    pcStop()
+}
+
+// ── Download MIDI + TXT ────────────────────────────────────────────────────
+function downloadMidi(){
+    if(!midiBlobGlobal){ alert("Generate MIDI first!"); return }
+
+    // MIDI
+    const urlMid = URL.createObjectURL(midiBlobGlobal)
+    const aMid = document.createElement("a")
+    aMid.href = urlMid; aMid.download = "twelve_tone.mid"
+    document.body.appendChild(aMid); aMid.click()
+    document.body.removeChild(aMid); URL.revokeObjectURL(urlMid)
+
+    // TXT
+    const PC_LABELS = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B']
+    const startNoteVal = parseInt(document.getElementById("startNote").value)
+    const startNote    = PC_LABELS[startNoteVal]
+    const tempo        = document.getElementById("tempo").value
+    const harmonyOn    = document.getElementById("harmony").checked
+    const harmonyType  = harmonyOn ? document.getElementById("harmonyType").value : "none"
+
+    const vals = []
+    for(let i = 1; i <= 12; i++){
+        const el = document.getElementById(`multi_i${i}`)
+        vals.push(el ? el.value : 0)
+    }
+    const seqParams = vals.join(" ")
+
+    let tempoDetail = tempo
+    if(tempo === "constant"){
+        const noteLen = document.getElementById("noteLength").value
+        const lenLabels = {"4":"whole","2":"half","1":"quarter","0.5":"eighth","0.25":"sixteenth"}
+        tempoDetail = `constant (${lenLabels[noteLen] || noteLen})`
+    }
+
+    const content =
+`Twelve-Tone Calculator — Generation Parameters
+===============================================
+Start Note:    ${startNote}
+Sequence:      Multidimensional ${seqParams}
+Tempo:         ${tempoDetail}
+Harmony:       ${harmonyType}
+`
+    const blob = new Blob([content], { type: "text/plain" })
+    const urlTxt = URL.createObjectURL(blob)
+    const aTxt = document.createElement("a")
+    aTxt.href = urlTxt; aTxt.download = "twelve_tone.txt"
+    document.body.appendChild(aTxt); aTxt.click()
+    document.body.removeChild(aTxt); URL.revokeObjectURL(urlTxt)
+}
+
+// ── Import MIDI ────────────────────────────────────────────────────────────
+async function importMidi(input){
+    const allFiles = Array.from(input.files)
+    const midiFile = allFiles.find(f => f.name.endsWith('.mid') || f.name.endsWith('.midi'))
+    const txtFile  = allFiles.find(f => f.name.endsWith('.txt'))
+    if(!midiFile) return
+    input.value = ""
+
+    showLoading()
+    loadingOverlay.innerText = "📂 Importing MIDI..."
+    try {
+        const formData = new FormData()
+        formData.append("midi", midiFile)
+        formData.append("sequence_type", "Multidimensional")
+        formData.append("harmony_type", document.getElementById("harmonyType").value)
+        formData.append("tempo", document.getElementById("tempo").value)
+
+        const importRes = await fetch(`${BASE_URL}/import`, { method: "POST", body: formData })
+        if(!importRes.ok) throw new Error("Import failed: " + importRes.statusText)
+
+        const scoreBlob = await importRes.blob()
+        const scoreUrl = URL.createObjectURL(scoreBlob)
+
+        const midiBuffer = await midiFile.arrayBuffer()
+        midiData = new Midi(midiBuffer)
+        midiBlobGlobal = new Blob([midiBuffer], { type: "audio/midi" })
+
+        loadingOverlay.innerText = "🖊 Rendering notation..."
+        await osmd.load(scoreUrl)
+        osmd.render()
+
+        if(txtFile){
+            const txt = await txtFile.text()
+            applyParamsFromTxt(txt)
+        }
+
+        const svg = document.querySelector("#score svg")
+        if(svg){
+            const bbox = svg.getBBox()
+            svg.style.marginTop = `-${Math.max(0, bbox.y - 20)}px`
+        }
+    } catch(err){
+        console.error(err)
+        alert("Import error: " + err.message)
+    } finally {
+        hideLoading()
+    }
+}
+
+// ── Apply params from TXT ──────────────────────────────────────────────────
+function applyParamsFromTxt(txt){
+    const line = key => {
+        const match = txt.match(new RegExp(`^${key}:\\s*(.+)$`, 'm'))
+        return match ? match[1].trim() : null
+    }
+
+    const PC_LABELS = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B']
+    const startNote = line('Start Note')
+    if(startNote){
+        const idx = PC_LABELS.indexOf(startNote)
+        if(idx !== -1) document.getElementById('startNote').value = idx
+    }
+
+    const seqLine = line('Sequence')
+    if(seqLine){
+        const parts = seqLine.split(/\s+/)
+        // parts[0] = "Multidimensional", rest = 12 values
+        const nums = parts.slice(1)
+        nums.forEach((val, i) => {
+            const el = document.getElementById(`multi_i${i+1}`)
+            if(el) el.value = val
+        })
+    }
+
+    const tempoVal = line('Tempo')
+    if(tempoVal){
+        const tempoType = tempoVal.split(' ')[0]
+        const tempoSel = document.getElementById('tempo')
+        tempoSel.value = tempoType
+        tempoSel.dispatchEvent(new Event('change'))
+        if(tempoType === 'constant'){
+            const lenLabels = {"whole":"4","half":"2","quarter":"1","eighth":"0.5","sixteenth":"0.25"}
+            const match = tempoVal.match(/\((\w+)\)/)
+            if(match && lenLabels[match[1]]){
+                document.getElementById('noteLength').value = lenLabels[match[1]]
+            }
+        }
+    }
+
+    const harmonyVal = line('Harmony')
+    if(harmonyVal){
+        const harmonyCheck = document.getElementById('harmony')
+        harmonyCheck.checked = (harmonyVal !== 'none')
+        if(harmonyVal !== 'none') document.getElementById('harmonyType').value = harmonyVal
+        harmonyCheck.dispatchEvent(new Event('change'))
+    }
+}
+
+// ── Contextual help ────────────────────────────────────────────────────────
+const helpPanel  = document.getElementById("helpPanel")
+const helpDefault = "<em>Hover over or focus any control to see its description.</em>"
+
+function showHelp(el){
+    const msg = el.dataset.help || el.closest("[data-help]")?.dataset.help
+    if(msg) helpPanel.innerHTML = msg
+}
+function clearHelp(){ helpPanel.innerHTML = helpDefault }
+
+document.querySelectorAll("[data-help]").forEach(el => {
+    el.addEventListener("mouseover",  e => { showHelp(e.currentTarget);  e.stopPropagation() })
+    el.addEventListener("focusin",    e => { showHelp(e.currentTarget);  e.stopPropagation() })
+    el.addEventListener("mouseout",   clearHelp)
+    el.addEventListener("focusout",   clearHelp)
+})
+
+// ── PITCH-CLASS CIRCLE ─────────────────────────────────────────────────────
+;(function(){
+    const PC_NAMES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B']
+    const R  = 76
+    const RN = 10
+    const NS = 'http://www.w3.org/2000/svg'
+    const svg = document.getElementById('pcCircle')
+
+    function pcAngle(pc){ return (pc/12)*2*Math.PI - Math.PI/2 }
+    function polar(r,a){ return { x: r*Math.cos(a), y: r*Math.sin(a) } }
+    function mkEl(tag, attrs, parent){
+        const e = document.createElementNS(NS, tag)
+        for(const [k,v] of Object.entries(attrs)) e.setAttribute(k,v)
+        if(parent) parent.appendChild(e)
+        return e
+    }
+
+    ;(function build(){
+        svg.innerHTML = ''
+        const defs = mkEl('defs',{},svg)
+        const flt = mkEl('filter',{id:'pcGlow',x:'-80%',y:'-80%',width:'260%',height:'260%'},defs)
+        mkEl('feGaussianBlur',{stdDeviation:'3',result:'blur'},flt)
+        const fm = mkEl('feMerge',{},flt)
+        mkEl('feMergeNode',{in:'blur'},fm)
+        mkEl('feMergeNode',{in:'SourceGraphic'},fm)
+        const mk = mkEl('marker',{id:'pcArr',markerWidth:'6',markerHeight:'6',refX:'5',refY:'3',orient:'auto'},defs)
+        mkEl('path',{d:'M0,0 L0,6 L6,3 z',fill:'#c8b87a'},mk)
+        const gr = mkEl('radialGradient',{id:'pcBg',cx:'50%',cy:'50%',r:'50%'},defs)
+        mkEl('stop',{offset:'0%','stop-color':'#1a1a28'},gr)
+        mkEl('stop',{offset:'100%','stop-color':'#0a0a0f'},gr)
+        mkEl('circle',{r:105,fill:'#3498db',stroke:'#2980b9','stroke-width':'1'},svg)
+        mkEl('circle',{r:46,fill:'none',stroke:'#2980b9','stroke-width':'1','stroke-dasharray':'2 4'},svg)
+        for(let pc=0;pc<12;pc++){
+            const p = polar(R-RN-1,pcAngle(pc))
+            mkEl('line',{x1:0,y1:0,x2:p.x,y2:p.y,stroke:'#2980b9','stroke-width':'0.7'},svg)
+        }
+        mkEl('g',{id:'pcArcLayer'},svg)
+        for(let pc=0;pc<12;pc++){
+            const pos = polar(R,pcAngle(pc))
+            const lp  = polar(R+RN+8,pcAngle(pc))
+            const g = mkEl('g',{id:`pcNd-${pc}`,transform:`translate(${pos.x},${pos.y})`},svg)
+            mkEl('circle',{id:`pcGl-${pc}`,r:RN+4,fill:'none',stroke:'rgba(240,228,176,0.35)','stroke-width':'2',opacity:'0'},g)
+            mkEl('circle',{id:`pcCi-${pc}`,r:RN,fill:'#2471a3',stroke:'#aed6f1','stroke-width':'1'},g)
+            mkEl('text',{id:`pcLb-${pc}`,'text-anchor':'middle','dominant-baseline':'central',
+                fill:'#d6eaf8','font-family':'Arial,sans-serif','font-size':'7'},g).textContent = PC_NAMES[pc]
+            mkEl('text',{x:lp.x-pos.x,y:lp.y-pos.y,'text-anchor':'middle','dominant-baseline':'central',
+                fill:'#aed6f1','font-family':'Arial,sans-serif','font-size':'6'},g).textContent = pc
+        }
+    })()
+
+    const nodeState = new Array(12).fill('off')
+    function renderNode(pc){
+        const ci = document.getElementById(`pcCi-${pc}`)
+        const gl = document.getElementById(`pcGl-${pc}`)
+        const lb = document.getElementById(`pcLb-${pc}`)
+        const s  = nodeState[pc]
+        if(s==='active'){
+            ci.setAttribute('fill','#f0e4b0'); ci.setAttribute('stroke','#f0e4b0')
+            ci.setAttribute('filter','url(#pcGlow)'); gl.setAttribute('opacity','0.8')
+            lb.setAttribute('fill','#0a0a0f')
+        } else if(s==='visited'){
+            ci.setAttribute('fill','#3a3255'); ci.setAttribute('stroke','#4a4270')
+            ci.removeAttribute('filter'); gl.setAttribute('opacity','0')
+            lb.setAttribute('fill','#8878b8')
+        } else {
+            ci.setAttribute('fill','#2471a3'); ci.setAttribute('stroke','#aed6f1')
+            ci.removeAttribute('filter'); gl.setAttribute('opacity','0')
+            lb.setAttribute('fill','#d6eaf8')
+        }
+    }
+    function resetNodes(){ for(let pc=0;pc<12;pc++){nodeState[pc]='off';renderNode(pc)} }
+
+    const arcMap = {}
+    function resetArcs(){
+        const l=document.getElementById('pcArcLayer'); if(l) l.innerHTML=''
+        for(const k in arcMap) delete arcMap[k]
+    }
+    function drawArc(from,to){
+        if(from===to) return
+        const key=`${from}-${to}`
+        const layer=document.getElementById('pcArcLayer')
+        if(arcMap[key]){
+            arcMap[key].count++
+            arcMap[key].el.setAttribute('stroke-width',String(Math.min(1.2+arcMap[key].count*0.7,5)))
+            return
+        }
+        const A=polar(R,pcAngle(from)), B=polar(R,pcAngle(to))
+        const mx=(A.x+B.x)/2, my=(A.y+B.y)/2
+        const dx=B.x-A.x, dy=B.y-A.y, len=Math.sqrt(dx*dx+dy*dy)||1
+        const side=from<to?1:-1, bulge=22*side
+        const cx=mx-(dy/len)*bulge, cy=my+(dx/len)*bulge
+        const stx=cx-A.x,sty=cy-A.y,stl=Math.sqrt(stx*stx+sty*sty)||1
+        const sx=A.x+(stx/stl)*(RN+1), sy=A.y+(sty/stl)*(RN+1)
+        const etx=B.x-cx,ety=B.y-cy,etl=Math.sqrt(etx*etx+ety*ety)||1
+        const ex=B.x-(etx/etl)*(RN+3), ey=B.y-(ety/etl)*(RN+3)
+        const pathEl=mkEl('path',{
+            d:`M${sx},${sy} Q${cx},${cy} ${ex},${ey}`,
+            fill:'none',stroke:'#c8b87a','stroke-width':'1.2',
+            'stroke-opacity':'0.6','stroke-linecap':'round','marker-end':'url(#pcArr)'
+        },layer)
+        arcMap[key]={count:1,el:pathEl}
+    }
+
+    const activePCs = new Set()
+    let lastPC=null, firstPC=null, firstArcEl=null, lastArcEl=null
+
+    function activatePC(pc){
+        if(lastPC!==null && lastPC!==pc){
+            const key=`${lastPC}-${pc}`, wasNew=!arcMap[key]
+            drawArc(lastPC,pc)
+            if(wasNew){
+                const el=arcMap[key].el
+                if(!firstArcEl){
+                    firstArcEl=el
+                    el.setAttribute('stroke','#ffffff')
+                    el.setAttribute('stroke-opacity','0.9')
+                    el.setAttribute('stroke-width','2')
+                }
+                lastArcEl=el
+            }
+        }
+        if(firstPC===null) firstPC=pc
+        lastPC=pc
+        activePCs.add(pc)
+        nodeState[pc]='active'
+        renderNode(pc)
+    }
+    function deactivatePC(pc){
+        if(pc===firstPC) return
+        activePCs.delete(pc)
+        nodeState[pc]='visited'
+        renderNode(pc)
+    }
+    function highlightEnd(){
+        if(lastPC!==null && lastPC!==firstPC){nodeState[lastPC]='active';renderNode(lastPC)}
+        if(lastArcEl && lastArcEl!==firstArcEl){
+            lastArcEl.setAttribute('stroke','#ffffff')
+            lastArcEl.setAttribute('stroke-opacity','0.9')
+            lastArcEl.setAttribute('stroke-width',String(Math.max(parseFloat(lastArcEl.getAttribute('stroke-width')||1.2),2)))
+        }
+    }
+
+    let pcTimers=[], pcPlaying=false
+
+    window.pcPlay = function(){
+        if(!midiData) return
+        pcStop()
+        resetNodes(); resetArcs()
+        lastPC=null; firstPC=null; firstArcEl=null; lastArcEl=null; activePCs.clear()
+
+        const track = midiData.tracks.find(t=>t.notes.length>0)
+        if(!track) return
+
+        const firstNote = track.notes[0].midi % 12
+        firstPC = firstNote
+        activatePC(firstNote)
+
+        const scale = 120 / parseInt(bpmSlider.value)
+        pcPlaying = true
+
+        track.notes.forEach(note => {
+            const pc    = note.midi % 12
+            const onMs  = note.time  * scale * 1000
+            const offMs = (note.time + Math.max(note.duration,0.05)) * scale * 1000
+            pcTimers.push(setTimeout(()=>{ if(pcPlaying) activatePC(pc)   }, onMs))
+            pcTimers.push(setTimeout(()=>{ if(pcPlaying) deactivatePC(pc) }, offMs))
+        })
+
+        const endMs = track.notes.reduce((mx,n)=>Math.max(mx,(n.time+n.duration)*scale*1000),0) + 400
+        pcTimers.push(setTimeout(()=>{ pcPlaying=false; highlightEnd() }, endMs))
+    }
+
+    window.pcStop = function(){
+        pcPlaying=false
+        pcTimers.forEach(t=>clearTimeout(t))
+        pcTimers=[]
+    }
+
+    window.pcReset = function(){
+        pcStop(); resetNodes(); resetArcs()
+        lastPC=null; firstPC=null; firstArcEl=null; lastArcEl=null; activePCs.clear()
+    }
+
+})()
+// ── END PITCH-CLASS CIRCLE ─────────────────────────────────────────────────
+
+</script>
+</body>
+</html>
